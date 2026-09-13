@@ -22,9 +22,11 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 
+const API_V1="/api/v1";
+
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/places", placesRoutes);
+app.use(`${API_V1}/auth`, authRoutes);
+app.use(`${API_V1}/places`, placesRoutes);
 // app.use("/api", healthRoutes);
 
 // Root endpoint
