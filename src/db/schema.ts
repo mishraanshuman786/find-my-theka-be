@@ -15,6 +15,29 @@ export const users = pgTable("users", {
 	unique("users_email_key").on(table.email),
 ]);
 
+export const passwordResetOtps=pgTable(
+	"password_reset_otps",
+	{
+		id:serial().primaryKey().notNull(),
+		userId:integer("user_id").notNull().references(()=>users.id,{onDelete:"cascade"}),
+		otpHash:varchar("otp_hash",{length:255}).notNull(),
+		expiresAt:timestamp("expires_at",{
+			mode:"string"
+		}).notNull(),
+		attempts:integer().notNull().default(0),
+		usedAt:timestamp("used_at",{
+			mode:"string"
+		}),
+		createdAt:timestamp("created_at",{
+			mode:"string"
+		}).default(sql`CURRENT_TIMESTAMP`),
+
+	},
+	(table)=>[
+      index("idx_password_reset_otps_user").on(table.userId),
+	]
+)
+
 export const searchHistory = pgTable("search_history", {
 	id: serial().primaryKey().notNull(),
 	userId: integer("user_id"),
