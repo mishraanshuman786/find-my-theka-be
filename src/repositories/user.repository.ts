@@ -3,6 +3,7 @@ import { db } from "../db";
 import { users } from "../db/schema";
 
 export class UserRepository{
+    // create new user
     async createUser(data:{
         name:string,
         email:string,
@@ -26,6 +27,7 @@ export class UserRepository{
         return user;
     }
 
+    // find user by email
     async findByEmail(email:string){
           const [user]=await db.select({
             id:users.id,
@@ -41,6 +43,7 @@ export class UserRepository{
           return user;
     }
 
+    // find user by id
     async findById(id:number){
         const [user]=await db.select({
             id:users.id,
@@ -51,6 +54,16 @@ export class UserRepository{
         }).from(users)
         .where(eq(users.id,id))
         .limit(1);
+
+        return user;
+    }
+
+    // update the password of existing user
+    async updatePassword(userId:number,hashedPassword:string){
+        const [user]=await db.update(users).set({
+            password:hashedPassword,
+            updatedAt: new Date().toISOString()
+        }).where(eq(users.id,userId)).returning();
 
         return user;
     }

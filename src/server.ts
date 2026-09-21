@@ -8,6 +8,7 @@ import morgan from "morgan";
 
 import authRoutes from "./routes/auth.route";
 import placesRoutes from "./routes/places.route";
+import passwordResetRoutes from "./routes/password-reset.route";
 // import healthRoutes from "./routes/health";
 
 dns.setDefaultResultOrder("ipv4first");
@@ -26,6 +27,8 @@ const API_V1="/api/v1";
 
 // Routes
 app.use(`${API_V1}/auth`, authRoutes);
+
+app.use(`${API_V1}/auth`, passwordResetRoutes);
 app.use(`${API_V1}/places`, placesRoutes);
 // app.use("/api", healthRoutes);
 
