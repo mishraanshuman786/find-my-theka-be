@@ -10,7 +10,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "typecheck": "tsc --noEmit",
-    "db:test": "tsx src/db/test.ts"
+    "db:test": "tsx src/db/test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "axios": "^1.7.0",
@@ -24,6 +27,8 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pg": "^8.12.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
     "react-email": "^6.9.5",
     "resend": "^6.28.1"
   },
@@ -36,9 +41,14 @@
     "@types/node": "^26.4.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.1",
     "drizzle-kit": "^0.31.10",
     "nodemon": "^3.1.0",
+    "pino-pretty": "^13.1.3",
+    "supertest": "^7.3.0",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
   }
 }

@@ -21,7 +21,7 @@ export class UserRepository{
             name:users.name,
             email:users.email,
             phone:users.phone,
-            createAt:users.createdAt
+            createdAt:users.createdAt
         });
 
         return user;
@@ -50,7 +50,7 @@ export class UserRepository{
             name:users.name,
             email:users.email,
             phone:users.phone,
-            createAt:users.createdAt
+            createdAt:users.createdAt
         }).from(users)
         .where(eq(users.id,id))
         .limit(1);
