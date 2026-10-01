@@ -1,3 +1,4 @@
+
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, Auth } from "firebase-admin/auth";
 
@@ -13,9 +14,7 @@ export function getFirebaseAuth(): Auth {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "Firebase Admin credentials are not configured"
-    );
+    throw new Error("Firebase Admin credentials are not configured");
   }
 
   const firebaseApp =
