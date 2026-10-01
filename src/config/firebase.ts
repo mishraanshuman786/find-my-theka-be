@@ -1,4 +1,3 @@
-
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, Auth } from "firebase-admin/auth";
 
@@ -17,6 +16,10 @@ export function getFirebaseAuth(): Auth {
     throw new Error("Firebase Admin credentials are not configured");
   }
 
+  const formattedPrivateKey = privateKey
+    .replace(/^"|"$/g, "")
+    .replace(/\\n/g, "\n");
+
   const firebaseApp =
     getApps().length > 0
       ? getApps()[0]
@@ -24,7 +27,7 @@ export function getFirebaseAuth(): Auth {
           credential: cert({
             projectId,
             clientEmail,
-            privateKey: privateKey.replace(/\\n/g, "\n"),
+            privateKey: formattedPrivateKey,
           }),
         });
 
@@ -32,4 +35,3 @@ export function getFirebaseAuth(): Auth {
 
   return firebaseAuth;
 }
-
