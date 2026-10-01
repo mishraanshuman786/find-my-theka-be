@@ -8,6 +8,8 @@ router.post("/register",authController.register);
 
 router.post("/login",authController.login);
 
+router.post("/firebase", authController.firebaseLogin);
+
 router.get("/profile",authMiddleware, authController.profile);
 
 export default router;

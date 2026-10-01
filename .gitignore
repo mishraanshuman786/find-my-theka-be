@@ -8,7 +8,7 @@ node_modules
 .env.test
 .env.production
 .env.example
-
+find-my-theka-firebase-adminsdk-fbsvc-c45d9054ba.json
 
 # Logs
 logs/

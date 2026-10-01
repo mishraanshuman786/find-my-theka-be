@@ -67,6 +67,25 @@ describe("JWT Utils", () => {
         sevenDaysInSeconds
       );
     });
+
+    it("should generate a token for a phone-only Firebase user", () => {
+  const token = generateToken({
+    id: 123,
+    email: null,
+    name: null,
+  });
+
+  const decoded = verifyToken(token);
+
+  expect(decoded).not.toHaveProperty("error");
+
+  if (!("error" in decoded)) {
+    expect(decoded.userId).toBe(123);
+    expect(decoded.email).toBeNull();
+    expect(decoded.name).toBeNull();
+  }
+});
+
   });
 
   describe("verifyToken", () => {

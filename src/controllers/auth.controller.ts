@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 
 import { authService } from "../services/auth.service";
+import { firebaseAuthService } from "../services/firebase-auth.service";
 
 export class AuthController {
   async register(req: Request, res: Response) {
@@ -97,6 +98,51 @@ export class AuthController {
         success: false,
         message: "Internal Server Error!",
       });
+    }
+  }
+
+  // login using firebase with email or phone
+  async firebaseLogin(req: Request, res: Response) {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Firebase ID token is required" });
+      }
+      const result = await firebaseAuthService.authenticate(idToken);
+      return res
+        .status(200)
+        .json({
+          success: true,
+          message: "Firebase authentication successful",
+          data: {
+            user: {
+              id: result.user.id,
+              name: result.user.name,
+              email: result.user.email,
+              phone: result.user.phone,
+            },
+            token: result.token,
+          },
+        });
+    } catch (error) {
+      console.error("Firebase authentication error:", error);
+      if (
+        error instanceof Error &&
+        error.message ===
+          "Firebase email and phone belong to different accounts"
+      ) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message: "Firebase email and phone belong to different accounts",
+          });
+      }
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid Firebase authentication" });
     }
   }
 

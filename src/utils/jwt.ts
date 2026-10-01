@@ -1,27 +1,29 @@
 import jwt, {  JwtPayload } from "jsonwebtoken";
 
-export interface AuthTokenPayload extends JwtPayload{
-    userId:number;
-    email:string;
-    name:string;
+export interface AuthTokenPayload extends JwtPayload {
+  userId: number;
+  email?: string | null;
+  name?: string | null;
 }
 
 const JWT_SECRET=process.env.JWT_SECRET ||  "findmytheka-secret-key-2024";
 
 const JWT_EXPIRES_IN = "7d";
 
-export function generateToken(user:{
-    id:number,
-    email:string,
-    name:string
-}){
-    const payload:AuthTokenPayload={
-        userId:user.id,
-        email:user.email,
-        name:user.name
-    }
+export function generateToken(user: {
+  id: number;
+  email?: string | null;
+  name?: string | null;
+}) {
+  const payload: AuthTokenPayload = {
+    userId: user.id,
+    email: user.email ?? null,
+    name: user.name ?? null,
+  };
 
-    return jwt.sign(payload,JWT_SECRET,{expiresIn: JWT_EXPIRES_IN});
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  });
 }
 
 

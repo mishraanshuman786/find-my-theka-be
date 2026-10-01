@@ -1,18 +1,22 @@
-import { pgTable, unique, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
+import { pgTable, unique, check, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
 
 export const users = pgTable("users", {
 	id: serial().primaryKey().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	email: varchar({ length: 255 }).notNull(),
-	password: varchar({ length: 255 }).notNull(),
+	name: varchar({ length: 100 }),
+	email: varchar({ length: 255 }),
+	password: varchar({ length: 255 }),
 	phone: varchar({ length: 20 }),
+	firebaseUid: varchar("firebase_uid", { length: 255 }),
 	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
 	unique("users_email_key").on(table.email),
+	unique("users_phone_key").on(table.phone),
+	unique("users_firebase_uid_key").on(table.firebaseUid),
+	check( "users_identity_check", sql`email IS NOT NULL OR phone IS NOT NULL OR firebase_uid IS NOT NULL` ),
 ]);
 
 export const passwordResetOtps=pgTable(
