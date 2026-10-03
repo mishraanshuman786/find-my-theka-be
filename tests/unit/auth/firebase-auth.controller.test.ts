@@ -125,29 +125,6 @@ describe("AuthController - Firebase Authentication", () => {
     });
   });
 
-  it("should return 409 when Firebase email and phone belong to different accounts", async () => {
-    req.body = {
-      idToken: "firebase-conflict-token",
-    };
 
-    vi.mocked(firebaseAuthService.authenticate).mockRejectedValue(
-      new Error(
-        "Firebase email and phone belong to different accounts"
-      )
-    );
-
-    await controller.firebaseLogin(
-      req as Request,
-      res as Response
-    );
-
-    expect(res.status).toHaveBeenCalledWith(409);
-
-    expect(res.json).toHaveBeenCalledWith({
-      success: false,
-      message:
-        "Firebase email and phone belong to different accounts",
-    });
-  });
 });
 

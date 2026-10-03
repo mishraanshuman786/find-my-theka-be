@@ -238,29 +238,7 @@ describe("UserRepository Integration Tests", () => {
     });
   });
 
-  describe("findByPhone",()=>{
-    it("should return a user by phone number", async ()=>{
-      const user=await userRepository.createUser({
-        name:"Phone user",
-        email:null,
-        password:null,
-        phone:"+919876543210",
-        firebaseUid:"firebase-phone-123"
-      });
-
-      const result=await userRepository.findByPhone("+919876543210");
-
-      expect(result).toBeDefined();
-      expect(result?.id).toBe(user.id);
-      expect(result?.phone).toBe("+919876543210");
-      expect(result?.firebaseUid).toBe("firebase-phone-123");
-    });
-
-    it("should return undefined when phone does not exist",async ()=>{
-      const result=await userRepository.findByPhone("+919999999999");
-      expect(result).toBeUndefined();
-    })
-  })
+  
 
   // test for linking an existing account with firebase uid
   describe("updateFirebaseUid", () => {

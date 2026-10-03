@@ -4,12 +4,12 @@ import { generateToken } from "../utils/jwt";
 
 interface LocalUser {
   id: number;
-  name?: string | null;
-  email?: string | null;
-  password?: string | null;
-  phone?: string | null;
-  firebaseUid?: string | null;
-  createdAt?: string | null;
+  name: string | null;
+  email: string | null;
+  password: string | null;
+  phone: string | null;
+  firebaseUid: string | null;
+  createdAt: string | null;
 }
 
 interface UserRepository {
@@ -19,10 +19,6 @@ interface UserRepository {
 
   findByEmail(
     email: string
-  ): Promise<LocalUser | undefined>;
-
-  findByPhone(
-    phone: string
   ): Promise<LocalUser | undefined>;
 
   updateFirebaseUid(
@@ -44,83 +40,74 @@ export class FirebaseAuthService {
     private readonly userRepo: UserRepository = userRepository
   ) {}
 
-  async verifyFirebaseToken(idToken: string) {
-    return getFirebaseAuth().verifyIdToken(idToken);
+  private async verifyFirebaseToken(idToken: string) {
+    try {
+      return await getFirebaseAuth().verifyIdToken(idToken);
+    } catch (error) {
+      throw new Error("Invalid Firebase ID token");
+    }
   }
 
   async authenticate(idToken: string) {
-    const decodedToken =
-      await this.verifyFirebaseToken(idToken);
+    const decodedToken = await this.verifyFirebaseToken(idToken);
 
-    // 1. Check whether this Firebase UID is already linked.
+    /*
+     * 1. Check whether this Firebase UID is already linked
+     *    to a local user.
+     */
     const existingFirebaseUser =
-      await this.userRepo.findByFirebaseUid(
-        decodedToken.uid
-      );
+      await this.userRepo.findByFirebaseUid(decodedToken.uid);
 
     let user: LocalUser;
 
     if (existingFirebaseUser) {
       user = existingFirebaseUser;
     } else {
-      // 2. Get Firebase identities.
-      const firebaseEmail =
-        decodedToken.email?.trim().toLowerCase();
+      /*
+       * 2. Firebase authentication is email based.
+       *
+       * We intentionally DO NOT use:
+       * - decodedToken.phone_number
+       * - userRepo.findByPhone()
+       *
+       * The local phone field remains independent from
+       * Firebase authentication.
+       */
+      const firebaseEmail = decodedToken.email
+        ?.trim()
+        .toLowerCase();
 
-      const firebasePhone =
-        decodedToken.phone_number;
-
-      // Only trust the email when Firebase says it is verified.
       const verifiedEmail =
         firebaseEmail &&
         decodedToken.email_verified === true
           ? firebaseEmail
           : null;
 
-      let existingEmailUser:
-        | LocalUser
-        | undefined;
-
-      let existingPhoneUser:
-        | LocalUser
-        | undefined;
-
-      // 3. Find existing account by verified email.
-      if (verifiedEmail) {
-        existingEmailUser =
-          await this.userRepo.findByEmail(
-            verifiedEmail
-          );
-      }
-
-      // 4. Find existing account by Firebase phone.
-      if (firebasePhone) {
-        existingPhoneUser =
-          await this.userRepo.findByPhone(
-            firebasePhone
-          );
-      }
-
-      // 5. Prevent accidental account merging.
-      if (
-        existingEmailUser &&
-        existingPhoneUser &&
-        existingEmailUser.id !==
-          existingPhoneUser.id
-      ) {
+      /*
+       * Firebase users must have a verified email.
+       */
+      if (!verifiedEmail) {
         throw new Error(
-          "Firebase email and phone belong to different accounts"
+          "Firebase account has no verified email"
         );
       }
 
-      // 6. Existing local account found.
-      const existingUser =
-        existingEmailUser ?? existingPhoneUser;
+      /*
+       * 3. Check whether a normal local email/password
+       *    account already exists.
+       */
+      const existingEmailUser =
+        await this.userRepo.findByEmail(verifiedEmail);
 
-      if (existingUser) {
+      if (existingEmailUser) {
+        /*
+         * 4. Link Firebase UID to existing local account.
+         *
+         * Existing phone value is preserved.
+         */
         const linkedUser =
           await this.userRepo.updateFirebaseUid(
-            existingUser.id,
+            existingEmailUser.id,
             decodedToken.uid
           );
 
@@ -132,28 +119,24 @@ export class FirebaseAuthService {
 
         user = linkedUser;
       } else {
-        // 7. No existing account.
-        //
-        // We need at least one trusted Firebase
-        // identity before creating a local user.
-        if (!verifiedEmail && !firebasePhone) {
-          throw new Error(
-            "Firebase account has no verified identity"
-          );
-        }
-
+        /*
+         * 5. Create a new Firebase/Google user.
+         *
+         * Phone is deliberately NULL.
+         */
         user = await this.userRepo.createUser({
           name: decodedToken.name ?? null,
           email: verifiedEmail,
           password: null,
-          phone: firebasePhone ?? null,
+          phone: null,
           firebaseUid: decodedToken.uid,
         });
       }
     }
 
-    // 8. Generate the same application JWT
-    // used by normal email/password authentication.
+    /*
+     * 6. Generate the application's JWT.
+     */
     const token = generateToken({
       id: user.id,
       name: user.name,
@@ -169,4 +152,3 @@ export class FirebaseAuthService {
 
 export const firebaseAuthService =
   new FirebaseAuthService();
-

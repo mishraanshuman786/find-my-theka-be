@@ -71,21 +71,7 @@ export class UserRepository {
     return user;
   }
 
-  // find user by phone
-  async findByPhone(phone:string){
-    const [user]=await db.select({
-      id:users.id,
-      name:users.name,
-      email:users.email,
-      password:users.password,
-      phone:users.phone,
-      firebaseUid:users.firebaseUid,
-      createdAt:users.createdAt
-    }).from(users).where(eq(users.phone, phone)).limit(1);
-
-    return user;
-  }
-
+ 
 
 
   // find user by id
