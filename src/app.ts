@@ -9,6 +9,7 @@ import httpLogger from "./middleware/logger.middleware";
 import authRoutes from "./routes/auth.route";
 import placesRoutes from "./routes/places.route";
 import passwordResetRoutes from "./routes/password-reset.route";
+import thekaRoutes from "./routes/theka.route";
 
 dns.setDefaultResultOrder("ipv4first");
 
@@ -27,6 +28,7 @@ app.use(httpLogger);
 app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/auth`, passwordResetRoutes);
 app.use(`${API_V1}/places`, placesRoutes);
+app.use(`${API_V1}/thekas`,thekaRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

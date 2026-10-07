@@ -1,6 +1,13 @@
-import { pgTable, unique, check, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
+import { pgTable,pgEnum, unique, check, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
+export const thekaStatusEnum=pgEnum("theka_status",[
+"PENDING",
+"UNDER_REVIEW",
+"VERIFIED",
+"REJECTED",
+"SUSPENDED"
+])
 
 
 export const users = pgTable("users", {
@@ -58,3 +65,53 @@ export const searchHistory = pgTable("search_history", {
 			name: "search_history_user_id_fkey"
 		}).onDelete("cascade"),
 ]);
+
+export const thekas=pgTable("thekas",{
+	id:serial("id").primaryKey().notNull(),
+	ownerUserId:integer("owner_user_id").notNull().references(()=> users.id,{
+		onDelete:"cascade"
+	}),
+	name:varchar("name",{length:150}).notNull(),
+	contactPhone:varchar("contact_phone",{
+		length:20
+	}).notNull(),
+	address:varchar("address",{
+		length:500
+	}).notNull(),
+	city:varchar("city",{length:100}).notNull(),
+	state:varchar("state",{length:100}).notNull(),
+	pincode:varchar("pincode",{length:6}).notNull(),
+	latitude:numeric("latitude",{
+		precision:10,
+		scale:7,
+	}).notNull(),
+	longitude:numeric("longitude",{
+		precision:10,
+		scale:7
+	}).notNull(),
+	aadhaarNumber:varchar("aadhaar_number",{
+		length:12
+	}).notNull(),
+	gstNumber:varchar("gst_number",{
+		length:15
+	}).notNull(),
+	licenseNumber:varchar("license_number",{
+		length:100
+	}).notNull(),
+	status:thekaStatusEnum("status").notNull().default("PENDING"),
+	createdAt:timestamp("created_at",{
+		mode:"string"
+	}).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt:timestamp("updated_at",{
+		mode:"string"
+	}).default(sql`CURRENT_TIMESTAMP`).notNull(),
+
+},(table)=>[
+     index("thekas_owner_user_id_idx").on(table.ownerUserId),
+	 index("thekas_status_idx").on(table.status),
+	 index("thekas_location_idx").on(table.longitude, table.latitude)
+]);
+
+
+
+

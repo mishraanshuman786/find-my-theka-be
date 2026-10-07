@@ -6,6 +6,7 @@ export async function cleanDatabase(){
       TRUNCATE TABLE
         password_reset_otps,
         search_history,
+        thekas,
         users
       RESTART IDENTITY
       CASCADE;
