@@ -43,6 +43,7 @@ describe("AuthController - Firebase Authentication", () => {
         email: "google@example.com",
         password: null,
         phone: null,
+        role:"USER",
         firebaseUid: "firebase-uid-123",
         createdAt: new Date().toISOString(),
       },
@@ -71,6 +72,7 @@ describe("AuthController - Firebase Authentication", () => {
           name: "Google User",
           email: "google@example.com",
           phone: null,
+          role:"USER"
         },
         token: "find-my-theka-jwt",
       },
@@ -124,6 +126,48 @@ describe("AuthController - Firebase Authentication", () => {
       message: "Invalid Firebase authentication",
     });
   });
+
+  it("should return ADMIN role for an admin Firebase user", async () => {
+  req.body = {
+    idToken: "valid-admin-firebase-id-token",
+  };
+
+  vi.mocked(firebaseAuthService.authenticate).mockResolvedValue({
+    user: {
+      id: 99,
+      name: "Admin User",
+      email: "admin@example.com",
+      password: null,
+      phone: null,
+      role: "ADMIN",
+      firebaseUid: "firebase-admin-uid",
+      createdAt: new Date().toISOString(),
+    },
+    token: "admin-jwt-token",
+  });
+
+  await controller.firebaseLogin(
+    req as Request,
+    res as Response,
+  );
+
+  expect(res.status).toHaveBeenCalledWith(200);
+
+  expect(res.json).toHaveBeenCalledWith({
+    success: true,
+    message: "Firebase authentication successful",
+    data: {
+      user: {
+        id: 99,
+        name: "Admin User",
+        email: "admin@example.com",
+        phone: null,
+        role: "ADMIN",
+      },
+      token: "admin-jwt-token",
+    },
+  });
+});
 
 
 });

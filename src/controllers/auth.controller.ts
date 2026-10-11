@@ -31,6 +31,7 @@ export class AuthController {
             name: result.user.name,
             email: result.user.email,
             phone: result.user.phone,
+            role: result.user.role
           },
           token: result.token,
         },
@@ -77,6 +78,7 @@ export class AuthController {
             name: result.user.name,
             email: result.user.email,
             phone: result.user.phone,
+            role: result.user.role
           },
           token: result.token,
         },
@@ -122,6 +124,7 @@ export class AuthController {
               name: result.user.name,
               email: result.user.email,
               phone: result.user.phone,
+              role: result.user.role
             },
             token: result.token,
           },

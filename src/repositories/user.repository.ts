@@ -5,32 +5,33 @@ import { users } from "../db/schema";
 export class UserRepository {
   // create new user
   async createUser(data: {
-  name?: string | null;
-  email?: string | null;
-  password?: string | null;
-  phone?: string | null;
-  firebaseUid?: string | null;
-}) {
+    name?: string | null;
+    email?: string | null;
+    password?: string | null;
+    phone?: string | null;
+    firebaseUid?: string | null;
+  }) {
     const [user] = await db
-    .insert(users)
-    .values({
-      name: data.name ?? null,
-      email: data.email ?? null,
-      password: data.password ?? null,
-      phone: data.phone ?? null,
-      firebaseUid: data.firebaseUid ?? null,
-    })
-    .returning({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      password: users.password,
-      phone: users.phone,
-      firebaseUid: users.firebaseUid,
-      createdAt: users.createdAt,
-    });
+      .insert(users)
+      .values({
+        name: data.name ?? null,
+        email: data.email ?? null,
+        password: data.password ?? null,
+        phone: data.phone ?? null,
+        firebaseUid: data.firebaseUid ?? null,
+      })
+      .returning({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        password: users.password,
+        phone: users.phone,
+        role: users.role,
+        firebaseUid: users.firebaseUid,
+        createdAt: users.createdAt,
+      });
 
-  return user;
+    return user;
   }
 
   // find user by email
@@ -42,6 +43,7 @@ export class UserRepository {
         email: users.email,
         password: users.password,
         phone: users.phone,
+        role: users.role,
         firebaseUid: users.firebaseUid,
         createdAt: users.createdAt,
       })
@@ -61,6 +63,7 @@ export class UserRepository {
         email: users.email,
         password: users.password,
         phone: users.phone,
+        role: users.role,
         firebaseUid: users.firebaseUid,
         createdAt: users.createdAt,
       })
@@ -71,9 +74,6 @@ export class UserRepository {
     return user;
   }
 
- 
-
-
   // find user by id
   async findById(id: number) {
     const [user] = await db
@@ -82,6 +82,7 @@ export class UserRepository {
         name: users.name,
         email: users.email,
         phone: users.phone,
+        role: users.role,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -119,6 +120,7 @@ export class UserRepository {
         name: users.name,
         email: users.email,
         phone: users.phone,
+        role: users.role,
         firebaseUid: users.firebaseUid,
         createdAt: users.createdAt,
       });

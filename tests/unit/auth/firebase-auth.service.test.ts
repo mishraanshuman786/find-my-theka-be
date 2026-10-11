@@ -39,6 +39,7 @@ describe("FirebaseAuthService", () => {
       email: "anshuman@example.com",
       password: "hashed-password",
       phone: null,
+      role:"USER" as const,
       firebaseUid: "firebase-uid-123",
       createdAt: "2026-09-24T10:00:00.000Z",
     };
@@ -74,6 +75,7 @@ describe("FirebaseAuthService", () => {
       email: "existing@example.com",
       password: "hashed-password",
       phone: null,
+      role:"USER" as const,
       firebaseUid: null,
       createdAt: "2026-09-24T10:00:00.000Z",
     };
@@ -166,6 +168,7 @@ describe("FirebaseAuthService", () => {
         email: "newgoogle@example.com",
         password: null,
         phone: null,
+        role:"USER" as const,
         firebaseUid: "firebase-google-new",
         createdAt: new Date().toISOString(),
       }),
@@ -192,6 +195,7 @@ describe("FirebaseAuthService", () => {
       email: "newgoogle@example.com",
       password: null,
       phone: null,
+      role:"USER",
       firebaseUid: "firebase-google-new",
       createdAt: expect.any(String),
     });
@@ -212,6 +216,7 @@ describe("FirebaseAuthService", () => {
       email: "jwtuser@example.com",
       password: null,
       phone: null,
+      role: "USER" as const,
       firebaseUid: "firebase-google-jwt-test",
       createdAt: new Date().toISOString(),
     };
@@ -227,6 +232,7 @@ describe("FirebaseAuthService", () => {
       id: existingUser.id,
       name: existingUser.name,
       email: existingUser.email,
+      role:existingUser.role
     });
     expect(result).toEqual({
       user: existingUser,
@@ -251,6 +257,7 @@ describe("FirebaseAuthService", () => {
       email: "user@example.com",
       password: null,
       phone: "9876543210",
+      role:"USER" as const,
       firebaseUid: null,
       createdAt: new Date().toISOString(),
     };
@@ -284,4 +291,44 @@ describe("FirebaseAuthService", () => {
 
     expect(result.user).toEqual(linkedUser);
   });
+
+  it("should preserve ADMIN role for an existing Firebase user", async () => {
+  const adminUser = {
+    id: 99,
+    name: "Admin User",
+    email: "admin@example.com",
+    password: null,
+    phone: null,
+    firebaseUid: "firebase-admin-uid",
+    role: "ADMIN" as const,
+    createdAt: new Date().toISOString(),
+  };
+
+  verifyIdTokenMock.mockResolvedValue({
+    uid: "firebase-admin-uid",
+    email: "admin@example.com",
+    email_verified: true,
+    name: "Admin User",
+  });
+
+  vi.mocked(generateToken).mockReturnValue("admin-jwt-token");
+
+  const userRepo = {
+    findByFirebaseUid: vi.fn().mockResolvedValue(adminUser),
+    findByEmail: vi.fn(),
+    updateFirebaseUid: vi.fn(),
+    createUser: vi.fn(),
+  };
+
+  const service = new FirebaseAuthService(userRepo as any);
+  const result = await service.authenticate("valid-admin-firebase-token");
+
+  expect(result.user.role).toBe("ADMIN");
+  expect(generateToken).toHaveBeenCalledWith({
+    id: adminUser.id,
+    name: adminUser.name,
+    email: adminUser.email,
+    role: "ADMIN",
+  });
+});
 });

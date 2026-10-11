@@ -1,13 +1,23 @@
 import { pgTable,pgEnum, unique, check, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
+// Enums
+// User Role Enum
+export const userRoleEnum=pgEnum("user_role",[
+ "USER",
+ "ADMIN"
+]);
+
+// Theka Status Enum
 export const thekaStatusEnum=pgEnum("theka_status",[
 "PENDING",
 "UNDER_REVIEW",
 "VERIFIED",
 "REJECTED",
 "SUSPENDED"
-])
+]);
+
+
 
 
 export const users = pgTable("users", {
@@ -17,6 +27,7 @@ export const users = pgTable("users", {
 	password: varchar({ length: 255 }),
 	phone: varchar({ length: 20 }),
 	firebaseUid: varchar("firebase_uid", { length: 255 }),
+	role:userRoleEnum("role").notNull().default("USER"),
 	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

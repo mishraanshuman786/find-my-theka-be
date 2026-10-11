@@ -1,9 +1,12 @@
 import jwt, {  JwtPayload } from "jsonwebtoken";
 
+export type UserRole="USER"|"ADMIN";
+
 export interface AuthTokenPayload extends JwtPayload {
   userId: number;
   email?: string | null;
   name?: string | null;
+  role:UserRole;
 }
 
 const JWT_SECRET=process.env.JWT_SECRET ||  "findmytheka-secret-key-2024";
@@ -14,11 +17,13 @@ export function generateToken(user: {
   id: number;
   email?: string | null;
   name?: string | null;
+  role:UserRole;
 }) {
   const payload: AuthTokenPayload = {
     userId: user.id,
     email: user.email ?? null,
     name: user.name ?? null,
+    role: user.role
   };
 
   return jwt.sign(payload, JWT_SECRET, {

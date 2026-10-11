@@ -1,8 +1,8 @@
+
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 
 import app from "../../../src/app";
-
 import { db } from "../../../src/db";
 import { users } from "../../../src/db/schema";
 import { cleanDatabase } from "../../helpers/db";
@@ -24,7 +24,9 @@ describe("POST /api/v1/auth/firebase", () => {
   });
 
   it("should return 400 when Firebase ID token is missing", async () => {
-    const response = await request(app).post("/api/v1/auth/firebase").send({});
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({});
 
     expect(response.status).toBe(400);
 
@@ -41,9 +43,11 @@ describe("POST /api/v1/auth/firebase", () => {
       new Error("Firebase ID token is invalid"),
     );
 
-    const response = await request(app).post("/api/v1/auth/firebase").send({
-      idToken: "invalid-firebase-token",
-    });
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "invalid-firebase-token",
+      });
 
     expect(response.status).toBe(401);
 
@@ -52,7 +56,9 @@ describe("POST /api/v1/auth/firebase", () => {
       message: "Invalid Firebase authentication",
     });
 
-    expect(verifyIdTokenMock).toHaveBeenCalledWith("invalid-firebase-token");
+    expect(verifyIdTokenMock).toHaveBeenCalledWith(
+      "invalid-firebase-token",
+    );
   });
 
   it("should login an existing Firebase user", async () => {
@@ -74,20 +80,24 @@ describe("POST /api/v1/auth/firebase", () => {
       name: "Existing Firebase User",
     } as any);
 
-    const response = await request(app).post("/api/v1/auth/firebase").send({
-      idToken: "valid-existing-firebase-token",
-    });
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "valid-existing-firebase-token",
+      });
 
     expect(response.status).toBe(200);
-
     expect(response.body.success).toBe(true);
-    expect(response.body.message).toBe("Firebase authentication successful");
+    expect(response.body.message).toBe(
+      "Firebase authentication successful",
+    );
 
     expect(response.body.data.user).toEqual({
       id: existingUser.id,
       name: "Existing Firebase User",
       email: "firebase@example.com",
       phone: null,
+      role: "USER",
     });
 
     expect(response.body.data.token).toEqual(expect.any(String));
@@ -101,18 +111,20 @@ describe("POST /api/v1/auth/firebase", () => {
       name: "New Google User",
     } as any);
 
-    const response = await request(app).post("/api/v1/auth/firebase").send({
-      idToken: "valid-new-google-token",
-    });
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "valid-new-google-token",
+      });
 
     expect(response.status).toBe(200);
-
     expect(response.body.success).toBe(true);
 
     expect(response.body.data.user).toMatchObject({
       name: "New Google User",
       email: "newgoogle@example.com",
       phone: null,
+      role: "USER",
     });
 
     expect(response.body.data.token).toEqual(expect.any(String));
@@ -125,6 +137,7 @@ describe("POST /api/v1/auth/firebase", () => {
       password: null,
       phone: null,
       firebaseUid: "firebase-new-google-uid",
+      role: "USER",
     });
   });
 
@@ -147,12 +160,13 @@ describe("POST /api/v1/auth/firebase", () => {
       name: "Existing Email User",
     } as any);
 
-    const response = await request(app).post("/api/v1/auth/firebase").send({
-      idToken: "valid-email-link-token",
-    });
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "valid-email-link-token",
+      });
 
     expect(response.status).toBe(200);
-
     expect(response.body.success).toBe(true);
 
     expect(response.body.data.user).toMatchObject({
@@ -160,6 +174,7 @@ describe("POST /api/v1/auth/firebase", () => {
       name: "Existing Email User",
       email: "existing@example.com",
       phone: null,
+      role: "USER",
     });
 
     const [linkedUser] = await db.select().from(users);
@@ -168,52 +183,46 @@ describe("POST /api/v1/auth/firebase", () => {
   });
 
   it("should authenticate using verified email and ignore Firebase phone number", async () => {
-  const [existingUser] = await db
-    .insert(users)
-    .values({
+    const [existingUser] = await db
+      .insert(users)
+      .values({
+        name: "Existing User",
+        email: "existing@example.com",
+        password: "hashed-password",
+        phone: "9876543210",
+        firebaseUid: null,
+      })
+      .returning();
+
+    verifyIdTokenMock.mockResolvedValue({
+      uid: "firebase-google-user",
+      email: "existing@example.com",
+      email_verified: true,
+      phone_number: "+919876543210",
+      name: "Existing User",
+    } as any);
+
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "valid-firebase-token",
+      });
+
+    expect(response.status).toBe(200);
+
+    expect(response.body.data.user).toEqual({
+      id: existingUser.id,
       name: "Existing User",
       email: "existing@example.com",
-      password: "hashed-password",
       phone: "9876543210",
-      firebaseUid: null,
-    })
-    .returning();
-
-  verifyIdTokenMock.mockResolvedValue({
-    uid: "firebase-google-user",
-    email: "existing@example.com",
-    email_verified: true,
-    phone_number: "+919876543210",
-    name: "Existing User",
-  } as any);
-
-  const response = await request(app)
-    .post("/api/v1/auth/firebase")
-    .send({
-      idToken: "valid-firebase-token",
+      role: "USER",
     });
 
-  expect(response.status).toBe(200);
+    const [updatedUser] = await db.select().from(users);
 
-  expect(response.body.data.user).toEqual({
-    id: existingUser.id,
-    name: "Existing User",
-    email: "existing@example.com",
-    phone: "9876543210",
+    expect(updatedUser.firebaseUid).toBe("firebase-google-user");
+    expect(updatedUser.phone).toBe("9876543210");
   });
-
-  const [updatedUser] = await db
-    .select()
-    .from(users);
-
-  expect(updatedUser.firebaseUid).toBe(
-    "firebase-google-user"
-  );
-
-  expect(updatedUser.phone).toBe(
-    "9876543210"
-  );
-});
 
   it("should return 401 when Firebase account has no verified identity", async () => {
     verifyIdTokenMock.mockResolvedValue({
@@ -222,9 +231,11 @@ describe("POST /api/v1/auth/firebase", () => {
       email_verified: false,
     } as any);
 
-    const response = await request(app).post("/api/v1/auth/firebase").send({
-      idToken: "firebase-no-identity-token",
-    });
+    const response = await request(app)
+      .post("/api/v1/auth/firebase")
+      .send({
+        idToken: "firebase-no-identity-token",
+      });
 
     expect(response.status).toBe(401);
 

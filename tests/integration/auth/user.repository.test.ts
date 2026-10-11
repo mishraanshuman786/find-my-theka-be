@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { userRepository } from "../../../src/repositories/user.repository";
-
 import { cleanDatabase } from "../../helpers/db";
 
 describe("UserRepository Integration Tests", () => {
@@ -23,7 +22,18 @@ describe("UserRepository Integration Tests", () => {
       expect(user.name).toBe("Test User");
       expect(user.email).toBe("test@example.com");
       expect(user.phone).toBe("9876543210");
+      expect(user.role).toBe("USER");
       expect(user.createdAt).toBeDefined();
+    });
+
+    it("should assign USER role by default", async () => {
+      const user = await userRepository.createUser({
+        name: "Default Role User",
+        email: "default-role@example.com",
+        password: "$2b$10$hashedpassword",
+      });
+
+      expect(user.role).toBe("USER");
     });
 
     it("should persist the user in the database", async () => {
@@ -34,13 +44,17 @@ describe("UserRepository Integration Tests", () => {
         phone: "9876543210",
       });
 
-      const user = await userRepository.findByEmail("persisted@example.com");
+      const user = await userRepository.findByEmail(
+        "persisted@example.com",
+      );
 
       expect(user).toBeDefined();
       expect(user?.id).toBe(createdUser.id);
       expect(user?.name).toBe("Persisted User");
       expect(user?.email).toBe("persisted@example.com");
+      expect(user?.role).toBe("USER");
     });
+
     it("should allow phone to be null", async () => {
       const user = await userRepository.createUser({
         name: "No Phone User",
@@ -50,6 +64,7 @@ describe("UserRepository Integration Tests", () => {
       });
 
       expect(user.phone).toBeNull();
+      expect(user.role).toBe("USER");
     });
 
     it("should reject duplicate email addresses", async () => {
@@ -68,7 +83,7 @@ describe("UserRepository Integration Tests", () => {
       ).rejects.toThrow();
     });
 
-    it("should create a phone-only Firebase user", async () => {
+    it("should create a phone-only Firebase user with the default USER role", async () => {
       const user = await userRepository.createUser({
         name: null,
         email: null,
@@ -82,6 +97,7 @@ describe("UserRepository Integration Tests", () => {
         email: null,
         phone: "+919876543210",
         firebaseUid: "firebase-phone-123",
+        role: "USER",
       });
 
       expect(user.password).toBeNull();
@@ -101,6 +117,7 @@ describe("UserRepository Integration Tests", () => {
         email: "google@example.com",
         phone: null,
         firebaseUid: "firebase-google-123",
+        role: "USER",
       });
 
       expect(user.password).toBeNull();
@@ -108,7 +125,7 @@ describe("UserRepository Integration Tests", () => {
   });
 
   describe("findByEmail", () => {
-    it("should return a user by email", async () => {
+    it("should return a user by email, including their role", async () => {
       await userRepository.createUser({
         name: "Email User",
         email: "email@example.com",
@@ -116,12 +133,15 @@ describe("UserRepository Integration Tests", () => {
         phone: "9876543210",
       });
 
-      const user = await userRepository.findByEmail("email@example.com");
+      const user = await userRepository.findByEmail(
+        "email@example.com",
+      );
 
       expect(user).toBeDefined();
       expect(user?.name).toBe("Email User");
       expect(user?.email).toBe("email@example.com");
       expect(user?.phone).toBe("9876543210");
+      expect(user?.role).toBe("USER");
     });
 
     it("should return the password hash when finding a user by email", async () => {
@@ -131,20 +151,25 @@ describe("UserRepository Integration Tests", () => {
         password: "$2b$10$hashedpassword",
       });
 
-      const user = await userRepository.findByEmail("password@example.com");
+      const user = await userRepository.findByEmail(
+        "password@example.com",
+      );
 
       expect(user?.password).toBe("$2b$10$hashedpassword");
+      expect(user?.role).toBe("USER");
     });
 
     it("should return undefined when email does not exist", async () => {
-      const user = await userRepository.findByEmail("missing@example.com");
+      const user = await userRepository.findByEmail(
+        "missing@example.com",
+      );
 
       expect(user).toBeUndefined();
     });
   });
 
   describe("findById", () => {
-    it("should return a user by ID", async () => {
+    it("should return a user by ID, including their role", async () => {
       const createdUser = await userRepository.createUser({
         name: "ID User",
         email: "id@example.com",
@@ -158,6 +183,7 @@ describe("UserRepository Integration Tests", () => {
       expect(user?.id).toBe(createdUser.id);
       expect(user?.name).toBe("ID User");
       expect(user?.email).toBe("id@example.com");
+      expect(user?.role).toBe("USER");
     });
 
     it("should return undefined when user ID does not exist", async () => {
@@ -191,7 +217,10 @@ describe("UserRepository Integration Tests", () => {
         password: "$2b$10$oldpassword",
       });
 
-      await userRepository.updatePassword(createdUser.id, "$2b$10$newpassword");
+      await userRepository.updatePassword(
+        createdUser.id,
+        "$2b$10$newpassword",
+      );
 
       const user = await userRepository.findByEmail(
         "persist-password@example.com",
@@ -210,9 +239,8 @@ describe("UserRepository Integration Tests", () => {
     });
   });
 
-  // tests related to new firebase integration
   describe("findByFirebaseUid", () => {
-    it("should return a user by Firebase UID", async () => {
+    it("should return a user by Firebase UID, including their role", async () => {
       const createdUser = await userRepository.createUser({
         name: "Firebase User",
         email: "firebase@example.com",
@@ -221,15 +249,18 @@ describe("UserRepository Integration Tests", () => {
         firebaseUid: "firebase-uid-123",
       });
 
-      const user = await userRepository.findByFirebaseUid("firebase-uid-123");
+      const user = await userRepository.findByFirebaseUid(
+        "firebase-uid-123",
+      );
 
       expect(user).toBeDefined();
       expect(user?.id).toBe(createdUser.id);
       expect(user?.email).toBe("firebase@example.com");
       expect(user?.firebaseUid).toBe("firebase-uid-123");
+      expect(user?.role).toBe("USER");
     });
 
-    it("should return undefined whenFirebase UID does not exist", async () => {
+    it("should return undefined when Firebase UID does not exist", async () => {
       const user = await userRepository.findByFirebaseUid(
         "unknown-firebase-uid",
       );
@@ -238,14 +269,11 @@ describe("UserRepository Integration Tests", () => {
     });
   });
 
-  
-
-  // test for linking an existing account with firebase uid
   describe("updateFirebaseUid", () => {
-    it("should attach Firebase UID to an existing user", async () => {
+    it("should attach Firebase UID to an existing user and preserve their role", async () => {
       const createdUser = await userRepository.createUser({
         name: "Existing User",
-        email: "exsting@example.com",
+        email: "existing@example.com",
         password: "$2b$10$hashedpassword",
       });
 
@@ -255,7 +283,9 @@ describe("UserRepository Integration Tests", () => {
       );
 
       expect(updatedUser).toBeDefined();
+      expect(updatedUser?.id).toBe(createdUser.id);
       expect(updatedUser?.firebaseUid).toBe("firebase-uid-456");
+      expect(updatedUser?.role).toBe("USER");
     });
   });
 });

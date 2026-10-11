@@ -1,6 +1,6 @@
 import { getFirebaseAuth } from "../config/firebase";
 import { userRepository } from "../repositories/user.repository";
-import { generateToken } from "../utils/jwt";
+import { generateToken, UserRole } from "../utils/jwt";
 
 interface LocalUser {
   id: number;
@@ -9,6 +9,7 @@ interface LocalUser {
   password: string | null;
   phone: string | null;
   firebaseUid: string | null;
+  role: UserRole;
   createdAt: string | null;
 }
 
@@ -141,6 +142,7 @@ export class FirebaseAuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role
     });
 
     return {

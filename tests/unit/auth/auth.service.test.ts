@@ -56,6 +56,7 @@ describe("AuthService", () => {
     email: "test@example.com",
     password: "$2b$10$hashed-password",
     phone: "9876543210",
+    role: "USER" as const,
     createdAt: "2026-09-21T10:00:00.000Z",
   };
 
@@ -80,6 +81,7 @@ describe("AuthService", () => {
         name: "Test User",
         email: "test@example.com",
         phone: "9876543210",
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 
@@ -100,6 +102,7 @@ describe("AuthService", () => {
           name: "Test User",
           email: "test@example.com",
           phone: "9876543210",
+          role:"USER",
           createdAt: "2026-09-21T10:00:00.000Z",
         },
         token: "mock-jwt-token",
@@ -120,6 +123,7 @@ describe("AuthService", () => {
         name: "Test User",
         email: "test@example.com",
         phone: null,
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 
@@ -170,6 +174,7 @@ describe("AuthService", () => {
         name: "Test User",
         email: "test@example.com",
         phone: null,
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 
@@ -203,6 +208,7 @@ describe("AuthService", () => {
         name: "Test User",
         email: "test@example.com",
         phone: null,
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 
@@ -238,6 +244,7 @@ describe("AuthService", () => {
         name: "Test User",
         email: "test@example.com",
         phone: "9876543210",
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 
@@ -256,6 +263,7 @@ describe("AuthService", () => {
         id: 1,
         name: "Test User",
         email: "test@example.com",
+        role:"USER"
       });
     });
   });
@@ -285,6 +293,7 @@ describe("AuthService", () => {
           name: "Test User",
           email: "test@example.com",
           phone: "9876543210",
+          role:"USER",
           createdAt: "2026-09-21T10:00:00.000Z",
         },
         token: "mock-jwt-token",
@@ -395,6 +404,7 @@ describe("AuthService", () => {
         id: user.id,
         name: user.name,
         email: user.email,
+        role:"USER"
       });
     });
 
@@ -428,6 +438,7 @@ it("should return the user's profile", async () => {
     name: "Test User",
     email: "test@example.com",
     phone: "9876543210",
+    role:"USER",
     createdAt: "2026-09-21T10:00:00.000Z",
   });
 
@@ -438,6 +449,7 @@ it("should return the user's profile", async () => {
     name: "Test User",
     email: "test@example.com",
     phone: "9876543210",
+    role:"USER",
     created_at: "2026-09-21T10:00:00.000Z",
   });
 });
@@ -449,6 +461,7 @@ it("should return the user's profile", async () => {
         name: "Test User",
         email: "test@example.com",
         phone: "9876543210",
+        role:"USER",
         createdAt: "2026-09-21T10:00:00.000Z",
       });
 

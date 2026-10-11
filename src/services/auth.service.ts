@@ -41,7 +41,8 @@ export class AuthService {
     const token=generateToken({
         id:user.id,
         name:user.name,
-        email:user.email
+        email:user.email,
+        role:user.role
     })
 
     return {
@@ -71,6 +72,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role
     });
 
     return {
@@ -79,6 +81,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        role: user.role,
         createdAt: user.createdAt,
       },
       token,
@@ -98,6 +101,7 @@ export class AuthService {
         name:user.name,
         email:user.email,
         phone:user.phone,
+        role: user.role,
         created_at:user.createdAt
     };
 

@@ -1,10 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import {
-  describe,
-  expect,
-  it,
-} from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   generateToken,
@@ -16,6 +12,7 @@ describe("JWT Utils", () => {
     id: 123,
     email: "test@example.com",
     name: "Test User",
+    role: "USER" as const,
   };
 
   describe("generateToken", () => {
@@ -28,25 +25,26 @@ describe("JWT Utils", () => {
 
     it("should generate a token containing the correct user data", () => {
       const token = generateToken(user);
-
       const decoded = verifyToken(token);
 
       expect(decoded).not.toHaveProperty("error");
 
       if ("error" in decoded) {
-        throw new Error(`JWT verification failed: ${decoded.error}`);
+        throw new Error(
+          `JWT verification failed: ${decoded.error}`
+        );
       }
 
       expect(decoded).toMatchObject({
         userId: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
       });
     });
 
     it("should generate a token with a 7-day expiration", () => {
       const token = generateToken(user);
-
       const decoded = jwt.decode(token);
 
       expect(decoded).not.toBeNull();
@@ -60,7 +58,6 @@ describe("JWT Utils", () => {
 
       const expirationTime = decoded.exp!;
       const issuedAt = decoded.iat!;
-
       const sevenDaysInSeconds = 7 * 24 * 60 * 60;
 
       expect(expirationTime - issuedAt).toBe(
@@ -68,41 +65,51 @@ describe("JWT Utils", () => {
       );
     });
 
-    it("should generate a token for a phone-only Firebase user", () => {
-  const token = generateToken({
-    id: 123,
-    email: null,
-    name: null,
-  });
+    it("should generate a token with the ADMIN role", () => {
+      const admin = {
+        id: 456,
+        email: "admin@example.com",
+        name: "Admin User",
+        role: "ADMIN" as const,
+      };
 
-  const decoded = verifyToken(token);
-
-  expect(decoded).not.toHaveProperty("error");
-
-  if (!("error" in decoded)) {
-    expect(decoded.userId).toBe(123);
-    expect(decoded.email).toBeNull();
-    expect(decoded.name).toBeNull();
-  }
-});
-
-  });
-
-  describe("verifyToken", () => {
-    it("should verify a valid JWT token", () => {
-      const token = generateToken(user);
-
+      const token = generateToken(admin);
       const decoded = verifyToken(token);
 
       expect(decoded).not.toHaveProperty("error");
 
       if ("error" in decoded) {
-        throw new Error(`JWT verification failed: ${decoded.error}`);
+        throw new Error(
+          `JWT verification failed: ${decoded.error}`
+        );
+      }
+
+      expect(decoded).toMatchObject({
+        userId: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: "ADMIN",
+      });
+    });
+  });
+
+  describe("verifyToken", () => {
+    it("should verify a valid JWT token", () => {
+      const token = generateToken(user);
+      const decoded = verifyToken(token);
+
+      expect(decoded).not.toHaveProperty("error");
+
+      if ("error" in decoded) {
+        throw new Error(
+          `JWT verification failed: ${decoded.error}`
+        );
       }
 
       expect(decoded.userId).toBe(user.id);
       expect(decoded.email).toBe(user.email);
       expect(decoded.name).toBe(user.name);
+      expect(decoded.role).toBe(user.role);
     });
 
     it("should reject an invalid JWT token", () => {
@@ -115,7 +122,6 @@ describe("JWT Utils", () => {
 
     it("should reject a tampered JWT token", () => {
       const token = generateToken(user);
-
       const tamperedToken = `${token}tampered`;
 
       const decoded = verifyToken(tamperedToken);
@@ -131,6 +137,7 @@ describe("JWT Utils", () => {
           userId: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         },
         "findmytheka-secret-key-2024",
         {
@@ -146,4 +153,3 @@ describe("JWT Utils", () => {
     });
   });
 });
-
