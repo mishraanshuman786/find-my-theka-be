@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.route";
 import placesRoutes from "./routes/places.route";
 import passwordResetRoutes from "./routes/password-reset.route";
 import thekaRoutes from "./routes/theka.route";
+import adminRoutes from "./routes/admin.route";
 
 dns.setDefaultResultOrder("ipv4first");
 
@@ -29,6 +30,7 @@ app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/auth`, passwordResetRoutes);
 app.use(`${API_V1}/places`, placesRoutes);
 app.use(`${API_V1}/thekas`,thekaRoutes);
+app.use(`${API_V1}/admin`, adminRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

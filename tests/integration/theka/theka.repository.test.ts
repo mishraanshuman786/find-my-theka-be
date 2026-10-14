@@ -41,6 +41,7 @@ describe("ThekaRepository", () => {
       aadhaarNumber: "123456789012",
       gstNumber: "09ABCDE1234F1Z5",
       licenseNumber: "UP-EXC-123456",
+      licenseExpiryDate: "2028-12-31",
     });
 
     expect(result).toBeDefined();
@@ -63,6 +64,7 @@ describe("ThekaRepository", () => {
       aadhaarNumber: "123456789012",
       gstNumber: "09ABCDE1234F1Z5",
       licenseNumber: "UP-EXC-123456",
+      licenseExpiryDate: "2028-12-31",
     });
 
     const result = await thekaRepository.findById(created.id);
@@ -86,6 +88,7 @@ describe("ThekaRepository", () => {
       aadhaarNumber: "123456789012",
       gstNumber: "09ABCDE1234F1Z5",
       licenseNumber: "UP-EXC-123456",
+      licenseExpiryDate: "2028-12-31",
     });
 
     const result = await thekaRepository.findByOwnerUserId(userId);
@@ -114,6 +117,7 @@ describe("ThekaRepository", () => {
       aadhaarNumber: "123456789012",
       gstNumber: "09ABCDE1234F1Z5",
       licenseNumber: "UP-EXC-123456",
+      licenseExpiryDate: "2028-12-31",
     });
 
     const result = await thekaRepository.findByIdAndOwnerUserId(
@@ -155,6 +159,7 @@ describe("ThekaRepository", () => {
       aadhaarNumber: "987654321098",
       gstNumber: "09ABCDE5678G1Z5",
       licenseNumber: "UP-EXC-654321",
+      licenseExpiryDate: "2028-12-31",
     });
 
     const result = await thekaRepository.findByIdAndOwnerUserId(

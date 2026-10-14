@@ -37,6 +37,7 @@ describe("GET /api/v1/thekas", () => {
     aadhaarNumber: "123456789012",
     gstNumber: "09ABCDE1234F1Z5",
     licenseNumber: "UP-EXC-123456",
+    licenseExpiryDate: "2028-12-31",
   };
 
   const secondTheka = {
@@ -51,6 +52,7 @@ describe("GET /api/v1/thekas", () => {
     aadhaarNumber: "987654321098",
     gstNumber: "09ABCDE5678G1Z5",
     licenseNumber: "UP-EXC-654321",
+     licenseExpiryDate: "2028-12-31",
   };
 
   let token: string;

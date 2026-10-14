@@ -64,6 +64,7 @@ export const createThekaSchema = z.object({
     .trim()
     .min(3, "License number must be at least 3 characters")
     .max(100, "License number must not exceed 100 characters"),
+  licenseExpiryDate: z.iso.date(),
 });
 
 export type CreateThekaInput = z.infer<typeof createThekaSchema>;

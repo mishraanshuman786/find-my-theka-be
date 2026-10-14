@@ -30,7 +30,7 @@ export class ThekaService {
       aadhaarNumber: data.aadhaarNumber,
       gstNumber: data.gstNumber,
       licenseNumber: data.licenseNumber,
-
+      licenseExpiryDate: data.licenseExpiryDate,
       status: "PENDING",
     });
 

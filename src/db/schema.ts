@@ -1,4 +1,4 @@
-import { pgTable,pgEnum, unique, check, serial, varchar, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
+import { pgTable,pgEnum, unique, check, serial, varchar, date, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 // Enums
@@ -108,6 +108,9 @@ export const thekas=pgTable("thekas",{
 	}).notNull(),
 	licenseNumber:varchar("license_number",{
 		length:100
+	}).notNull(),
+	licenseExpiryDate:date("license_expiry_date",{
+		mode:"string"
 	}).notNull(),
 	status:thekaStatusEnum("status").notNull().default("PENDING"),
 	createdAt:timestamp("created_at",{

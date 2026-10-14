@@ -43,6 +43,7 @@ const validThekaData = {
   aadhaarNumber: "123456789012",
   gstNumber: "09ABCDE1234F1Z5",
   licenseNumber: "UP-EXC-123456",
+  licenseExpiryDate: "2028-12-31",
 };
 
 beforeEach(() => {
@@ -54,6 +55,7 @@ beforeEach(() => {
     body: validThekaData,
     user: {
       userId: 1,
+      role:"USER"
     },
   };
 

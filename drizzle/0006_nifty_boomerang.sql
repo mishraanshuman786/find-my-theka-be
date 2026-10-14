@@ -1,0 +1,1 @@
+ALTER TABLE "thekas" ADD COLUMN "license_expiry_date" date NOT NULL;
