@@ -1,4 +1,4 @@
-import { pgTable,pgEnum, unique, check, serial, varchar, date, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
+import { pgTable,pgEnum, unique, check, serial, varchar, date, jsonb, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 // Enums
@@ -15,6 +15,20 @@ export const thekaStatusEnum=pgEnum("theka_status",[
 "VERIFIED",
 "REJECTED",
 "SUSPENDED"
+]);
+
+// Payment related enums
+export const paymentStatusEnum=pgEnum("payment_status",[
+	"CREATED",
+	"PAID",
+	"FAILED"
+]);
+
+export const paymentPurposeEnum=pgEnum("payment_purpose",[
+	"THEKA_REGISTRATION",
+    "SUBSCRIPTION",
+    "PREMIUM_FEATURE",
+    "OTHER"
 ]);
 
 
@@ -124,6 +138,31 @@ export const thekas=pgTable("thekas",{
      index("thekas_owner_user_id_idx").on(table.ownerUserId),
 	 index("thekas_status_idx").on(table.status),
 	 index("thekas_location_idx").on(table.longitude, table.latitude)
+]);
+
+export const payments=pgTable("payments",{
+	id: serial("id").primaryKey(),
+	userId:integer("user_id").notNull().references(()=>users.id,{onDelete:"restrict"}),
+	purpose:paymentPurposeEnum("purpose").notNull(),
+	// ID of the business object being paid for.
+	referenceId:varchar("reference_id",{length:150}).notNull(),
+	razorpayOrderId:varchar("razorpay_order_id",{length:100}).notNull().unique(),
+	razorpayPaymentId:varchar("razorpay_payment_id",{length:100}).unique(),
+	amount:integer("amount").notNull(),
+	currency: varchar("currency",{length:3}).notNull().default("INR"),
+	status:paymentStatusEnum("status").notNull().default("CREATED"),
+	description:varchar("description",{length:255}),
+	metadata: jsonb("metadata")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+	paidAt:timestamp("paid_at",{mode:"string"}),
+	createdAt:timestamp("created_at",{mode:"string"}).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt:timestamp("updated_at",{mode:"string"}).default(sql`CURRENT_TIMESTAMP`).notNull(),
+
+},(table)=>[
+	index("payments_user_id_idx").on(table.userId),
+	index("payments_reference_idx").on(table.purpose,table.referenceId)
 ]);
 
 
