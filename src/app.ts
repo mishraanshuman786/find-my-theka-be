@@ -12,6 +12,7 @@ import passwordResetRoutes from "./routes/password-reset.route";
 import thekaRoutes from "./routes/theka.route";
 import adminRoutes from "./routes/admin.route";
 import paymentRoutes from "./routes/payment.route";
+import gstValidationRoutes from "./routes/gst-validation.route";
 
 dns.setDefaultResultOrder("ipv4first");
 
@@ -33,6 +34,7 @@ app.use(`${API_V1}/places`, placesRoutes);
 app.use(`${API_V1}/thekas`,thekaRoutes);
 app.use(`${API_V1}/admin`, adminRoutes);
 app.use(`${API_V1}/payments`, paymentRoutes);
+app.use(`${API_V1}/gst`, gstValidationRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
