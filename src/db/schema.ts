@@ -1,4 +1,4 @@
-import { pgTable,pgEnum, unique, check, serial, varchar, date, jsonb, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
+import { pgTable,pgEnum, unique, check, uniqueIndex, serial, varchar, date, jsonb, timestamp, index, foreignKey, integer, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 // Enums
@@ -127,6 +127,7 @@ export const thekas=pgTable("thekas",{
 		mode:"string"
 	}).notNull(),
 	status:thekaStatusEnum("status").notNull().default("PENDING"),
+	registrationRequestKey: varchar("registration_request_key",{length:100}),
 	createdAt:timestamp("created_at",{
 		mode:"string"
 	}).default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -137,7 +138,8 @@ export const thekas=pgTable("thekas",{
 },(table)=>[
      index("thekas_owner_user_id_idx").on(table.ownerUserId),
 	 index("thekas_status_idx").on(table.status),
-	 index("thekas_location_idx").on(table.longitude, table.latitude)
+	 index("thekas_location_idx").on(table.longitude, table.latitude),
+	 uniqueIndex("thekas_registration_request_key_unique").on(table.ownerUserId, table.registrationRequestKey)
 ]);
 
 export const payments=pgTable("payments",{

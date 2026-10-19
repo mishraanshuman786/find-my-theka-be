@@ -64,73 +64,92 @@ export class PaymentService {
     keyId: process.env.RAZORPAY_KEY_ID!,
   };
 }
-  async verifyCheckoutPayment(
-    userId: number,
-    input: VerifyPaymentInput,
-  ) {
-    const record = await paymentRepository.findByOrderId(input.orderId);
+ 
+async getRegistrationPayment(userId: number, thekaId: string) {
+  return paymentRepository.findLatestByPurposeAndReference({
+    userId,
+    purpose: "THEKA_REGISTRATION",
+    referenceId: thekaId,
+  });
+}
 
-    if (!record) {
-      throw new Error("PAYMENT_NOT_FOUND");
+async syncAlreadyPaidPayment(orderId: string, paymentId: string) {
+  return paymentRepository.markPaidAndVerifyTheka({
+    orderId,
+    paymentId,
+  });
+}
+
+async verifyCheckoutPayment(
+  userId: number,
+  input: VerifyPaymentInput,
+) {
+  const record = await paymentRepository.findByOrderId(input.orderId);
+
+  if (!record) {
+    throw new Error("PAYMENT_NOT_FOUND");
+  }
+
+  if (record.userId !== userId) {
+    throw new Error("PAYMENT_FORBIDDEN");
+  }
+
+  if (record.status === "PAID") {
+    if (record.razorpayPaymentId !== input.paymentId) {
+      throw new Error("PAYMENT_ALREADY_COMPLETED");
     }
 
-    if (record.userId !== userId) {
-      throw new Error("PAYMENT_FORBIDDEN");
-    }
-
-    if (record.status === "PAID") {
-      if (record.razorpayPaymentId !== input.paymentId) {
-        throw new Error("PAYMENT_ALREADY_COMPLETED");
-      }
-
-      return { success: true, status: "PAID" as const };
-    }
-
-    if (record.status !== "CREATED") {
-      throw new Error("PAYMENT_NOT_PAYABLE");
-    }
-
-    const validSignature = razorpayService.verifyPaymentSignature(
-      record.razorpayOrderId,
-      input.paymentId,
-      input.signature,
-    );
-
-    if (!validSignature) {
-      throw new Error("INVALID_PAYMENT_SIGNATURE");
-    }
-
-    const [payment, order] = await Promise.all([
-      razorpayService.fetchPayment(input.paymentId),
-      razorpayService.fetchOrder(record.razorpayOrderId),
-    ]);
-
-    if (
-      payment.order_id !== record.razorpayOrderId ||
-      order.id !== record.razorpayOrderId ||
-      payment.amount !== record.amount ||
-      order.amount !== record.amount ||
-      payment.currency !== record.currency ||
-      order.currency !== record.currency
-    ) {
-      throw new Error("PAYMENT_DETAILS_MISMATCH");
-    }
-
-    if (payment.status !== "captured") {
-      return {
-        success: false,
-        status: payment.status,
-        message: "Payment is not captured yet",
-      };
-    }
-
-    await paymentRepository.markPaid({
+    // Repair the Theka status too if an earlier operation left it pending.
+    return paymentRepository.markPaidAndVerifyTheka({
       orderId: record.razorpayOrderId,
       paymentId: input.paymentId,
     });
-
-    return { success: true, status: "PAID" as const };
   }
+
+  if (record.status !== "CREATED") {
+    throw new Error("PAYMENT_NOT_PAYABLE");
+  }
+
+  const validSignature = razorpayService.verifyPaymentSignature(
+    record.razorpayOrderId,
+    input.paymentId,
+    input.signature,
+  );
+
+  if (!validSignature) {
+    throw new Error("INVALID_PAYMENT_SIGNATURE");
+  }
+
+  const [payment, order] = await Promise.all([
+    razorpayService.fetchPayment(input.paymentId),
+    razorpayService.fetchOrder(record.razorpayOrderId),
+  ]);
+
+  if (
+    payment.order_id !== record.razorpayOrderId ||
+    order.id !== record.razorpayOrderId ||
+    Number(payment.amount) !== record.amount ||
+    Number(order.amount) !== record.amount ||
+    payment.currency !== record.currency ||
+    order.currency !== record.currency
+  ) {
+    throw new Error("PAYMENT_DETAILS_MISMATCH");
+  }
+
+  if (payment.status !== "captured") {
+    return {
+      success: false as const,
+      status: payment.status,
+      message: "Payment is not captured yet",
+    };
+  }
+
+  return paymentRepository.markPaidAndVerifyTheka({
+    orderId: record.razorpayOrderId,
+    paymentId: input.paymentId,
+  });
+}
+
 }
 
 export const paymentService = new PaymentService();

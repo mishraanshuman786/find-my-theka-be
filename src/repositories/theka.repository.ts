@@ -1,3 +1,4 @@
+
 import { and, eq } from "drizzle-orm";
 
 import { db } from "../db";
@@ -47,7 +48,42 @@ export class ThekaRepository {
 
     return theka;
   }
+
+  async findByRegistrationRequestKey(
+    ownerUserId: number,
+    requestKey: string,
+  ) {
+    const [theka] = await db
+      .select()
+      .from(thekas)
+      .where(
+        and(
+          eq(thekas.ownerUserId, ownerUserId),
+          eq(thekas.registrationRequestKey, requestKey),
+        ),
+      )
+      .limit(1);
+
+    return theka;
+  }
+
+  async markVerified(id: number, ownerUserId: number) {
+    const [theka] = await db
+      .update(thekas)
+      .set({
+        status: "VERIFIED",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(thekas.id, id),
+          eq(thekas.ownerUserId, ownerUserId),
+        ),
+      )
+      .returning();
+
+    return theka;
+  }
 }
 
-export const thekaRepository =
-  new ThekaRepository();
+export const thekaRepository = new ThekaRepository();

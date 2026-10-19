@@ -13,30 +13,177 @@ export class ThekaService {
     private readonly thekaRepository: ThekaRepository,
   ) {}
 
-  async createTheka(
+  private matchesRegistration(
+    theka: Awaited<ReturnType<ThekaRepository["findById"]>>,
     userId: number,
     data: CreateThekaInput,
   ) {
-    const gstin = data.gstNumber.trim().toUpperCase();
+    if (!theka || theka.ownerUserId !== userId) {
+      return false;
+    }
 
-    // Step 1: Ensure this user has verified this exact GSTIN.
-    // If verification is missing or expired, do not create a Theka.
-    const verified = await gstVerificationService.isVerified(
-      String(userId),
-      gstin,
+    return (
+      theka.name === data.name &&
+      theka.contactPhone === data.contactPhone &&
+      theka.address === data.address &&
+      theka.city === data.city &&
+      theka.state === data.state &&
+      theka.pincode === data.pincode &&
+      Number(theka.latitude) === data.latitude &&
+      Number(theka.longitude) === data.longitude &&
+      theka.aadhaarNumber === data.aadhaarNumber &&
+      theka.gstNumber === data.gstNumber.trim().toUpperCase() &&
+      theka.licenseNumber === data.licenseNumber &&
+      theka.licenseExpiryDate === data.licenseExpiryDate
+    );
+  }
+
+  private async continueRegistration(
+    userId: number,
+    theka: NonNullable<
+      Awaited<ReturnType<ThekaRepository["findById"]>>
+    >,
+    amount: number,
+  ) {
+    const existingPayment = await paymentService.getRegistrationPayment(
+      userId,
+      String(theka.id),
     );
 
-    if (!verified) {
+    if (existingPayment?.status === "PAID") {
+      const result = await paymentService.syncAlreadyPaidPayment(
+        existingPayment.razorpayOrderId,
+        existingPayment.razorpayPaymentId!,
+      );
+
       return {
-        success: false as const,
-        code: "GST_VERIFICATION_REQUIRED",
-        message:
-          "Please verify your GSTIN before registering your Theka.",
+        success: true as const,
+        message: "Registration payment is already completed.",
+        data: {
+          theka: {
+            ...theka,
+            status: result.thekaStatus ?? "VERIFIED",
+          },
+          payment: null,
+          nextStep: "COMPLETE" as const,
+        },
       };
     }
 
-    // Step 2: Read the registration fee from backend configuration.
-    // The frontend must never decide the amount.
+    if (existingPayment?.status === "CREATED") {
+      return {
+        success: true as const,
+        message: "Continue your existing registration payment.",
+        data: {
+          theka,
+          payment: {
+            orderId: existingPayment.razorpayOrderId,
+            amount: existingPayment.amount,
+            currency: existingPayment.currency,
+            keyId: process.env.RAZORPAY_KEY_ID!,
+          },
+          nextStep: "COMPLETE_PAYMENT" as const,
+        },
+      };
+    }
+
+    const payment = await paymentService.createPaymentOrder({
+      userId,
+      purpose: "THEKA_REGISTRATION",
+      referenceId: String(theka.id),
+      amount,
+      description: `Registration fee for theka ${theka.id}`,
+      metadata: {
+        thekaId: String(theka.id),
+        gstin: theka.gstNumber,
+      },
+    });
+
+    return {
+      success: true as const,
+      message: "Theka created. Complete payment to continue.",
+      data: {
+        theka,
+        payment,
+        nextStep: "COMPLETE_PAYMENT" as const,
+      },
+    };
+  }
+
+  async createTheka(
+    userId: number,
+    data: CreateThekaInput,
+    requestKey: string,
+  ) {
+    const gstin = data.gstNumber.trim().toUpperCase();
+
+    // Retry: reuse the existing registration for this user and key.
+    let theka = await this.thekaRepository.findByRegistrationRequestKey(
+      userId,
+      requestKey,
+    );
+
+    if (theka) {
+      if (!this.matchesRegistration(theka, userId, data)) {
+        throw new Error("IDEMPOTENCY_KEY_REUSED");
+      }
+    } else {
+      const verified = await gstVerificationService.isVerified(
+        String(userId),
+        gstin,
+      );
+
+      if (!verified) {
+        return {
+          success: false as const,
+          code: "GST_VERIFICATION_REQUIRED",
+          message: "Please verify your GSTIN before registering your Theka.",
+        };
+      }
+
+      const amount = Number(
+        process.env.THEKA_REGISTRATION_FEE_PAISE,
+      );
+
+      if (!Number.isSafeInteger(amount) || amount <= 0) {
+        throw new Error("THEKA_REGISTRATION_FEE_NOT_CONFIGURED");
+      }
+
+      try {
+        theka = await this.thekaRepository.create({
+          ownerUserId: userId,
+          registrationRequestKey: requestKey,
+          name: data.name,
+          contactPhone: data.contactPhone,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
+          latitude: data.latitude.toString(),
+          longitude: data.longitude.toString(),
+          aadhaarNumber: data.aadhaarNumber,
+          gstNumber: gstin,
+          licenseNumber: data.licenseNumber,
+          licenseExpiryDate: data.licenseExpiryDate,
+          status: "PENDING",
+        });
+      } catch (error) {
+        // A concurrent request may have inserted this same key first.
+        const existing = await this.thekaRepository
+          .findByRegistrationRequestKey(userId, requestKey);
+
+        if (!existing) {
+          throw error;
+        }
+
+        theka = existing;
+
+        if (!this.matchesRegistration(theka, userId, data)) {
+          throw new Error("IDEMPOTENCY_KEY_REUSED");
+        }
+      }
+    }
+
     const amount = Number(
       process.env.THEKA_REGISTRATION_FEE_PAISE,
     );
@@ -45,56 +192,11 @@ export class ThekaService {
       throw new Error("THEKA_REGISTRATION_FEE_NOT_CONFIGURED");
     }
 
-    // Step 3: Create the Theka only after GST verification passes.
-    const theka = await this.thekaRepository.create({
-      ownerUserId: userId,
-      name: data.name,
-      contactPhone: data.contactPhone,
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
-      latitude: data.latitude.toString(),
-      longitude: data.longitude.toString(),
-      aadhaarNumber: data.aadhaarNumber,
-      gstNumber: gstin,
-      licenseNumber: data.licenseNumber,
-      licenseExpiryDate: data.licenseExpiryDate,
-      status: "PENDING",
-    });
-
-    // Step 4: Create the Razorpay payment order.
     try {
-      const payment = await paymentService.createPaymentOrder({
-        userId,
-        purpose: "THEKA_REGISTRATION",
-        referenceId: String(theka.id),
-        amount,
-        description: `Registration fee for theka ${theka.id}`,
-        metadata: {
-          thekaId: String(theka.id),
-          gstin,
-        },
-      });
-
-      // Step 5: Return Theka and payment details.
-      // Payment is not complete merely because an order was created.
-      return {
-        success: true as const,
-        message:
-          "Theka created and GST verified. Complete payment to continue.",
-        data: {
-          theka,
-          payment,
-          nextStep: "COMPLETE_PAYMENT" as const,
-        },
-      };
+      return await this.continueRegistration(userId, theka, amount);
     } catch (error) {
-      // The Theka has already been created. Preserve its ID so the
-      // frontend/backend can support retrying payment without creating
-      // duplicate Theka records.
       console.error(
-        `Failed to create payment order for Theka ${theka.id}:`,
+        `Payment setup failed for Theka ${theka.id}:`,
         error,
       );
 
@@ -102,7 +204,7 @@ export class ThekaService {
         success: false as const,
         code: "PAYMENT_ORDER_CREATION_FAILED",
         message:
-          "Theka was created, but payment setup failed. Please retry payment.",
+          "Your registration was saved. Please retry payment using the same registration attempt.",
         data: {
           theka,
           payment: null,
@@ -116,10 +218,7 @@ export class ThekaService {
     return this.thekaRepository.findByOwnerUserId(userId);
   }
 
-  async getThekaById(
-    thekaId: number,
-    userId: number,
-  ) {
+  async getThekaById(thekaId: number, userId: number) {
     return this.thekaRepository.findByIdAndOwnerUserId(
       thekaId,
       userId,
@@ -127,6 +226,4 @@ export class ThekaService {
   }
 }
 
-export const thekaService = new ThekaService(
-  thekaRepository,
-);
+export const thekaService = new ThekaService(thekaRepository);

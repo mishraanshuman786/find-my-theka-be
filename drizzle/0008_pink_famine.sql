@@ -1,0 +1,2 @@
+ALTER TABLE "thekas" ADD COLUMN "registration_request_key" varchar(100);--> statement-breakpoint
+CREATE UNIQUE INDEX "thekas_registration_request_key_unique" ON "thekas" USING btree ("owner_user_id","registration_request_key");

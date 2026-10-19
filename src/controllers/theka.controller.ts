@@ -58,60 +58,82 @@ const THEKA_ERRORS: Record<
 };
 
 export class ThekaController {
-  async create(req: Request, res: Response) {
-    if (!req.user) {
-      return res.status(401).json({
+  
+async create(req: Request, res: Response) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized!",
+    });
+  }
+
+  const requestKey = req.get("Idempotency-Key")?.trim();
+
+  if (
+    !requestKey ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestKey)
+  ) {
+    return res.status(400).json({
+      success: false,
+      code: "INVALID_IDEMPOTENCY_KEY",
+      message: "A valid Idempotency-Key UUID header is required.",
+    });
+  }
+
+  const validationResult = createThekaSchema.safeParse(req.body);
+
+  if (!validationResult.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid Theka Registration Data!",
+      error: validationResult.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const result = await thekaService.createTheka(
+      req.user.userId,
+      validationResult.data,
+      requestKey,
+    );
+
+    if (!result.success) {
+      const status =
+        result.code === "GST_VERIFICATION_REQUIRED" ? 422 : 503;
+
+      return res.status(status).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+
+    if (code === "IDEMPOTENCY_KEY_REUSED") {
+      return res.status(409).json({
         success: false,
-        message: "Unauthorized!",
+        code,
+        message:
+          "This registration key was already used with different data. Start a new registration attempt.",
       });
     }
 
-    const validationResult = createThekaSchema.safeParse(req.body);
-
-    if (!validationResult.success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Theka Registration Data!",
-        error: validationResult.error.flatten().fieldErrors,
-      });
-    }
-
-    try {
-      const result = await thekaService.createTheka(
-        req.user.userId,
-        validationResult.data,
-      );
-
-      // GST lookup succeeded, but GSTIN was invalid or inactive.
-      if (!result.success) {
-        return res.status(422).json(result);
-      }
-
-      return res.status(201).json(result);
-    } catch (error) {
-      const code =
-        error instanceof Error ? error.message : "";
-
-      const mappedError = THEKA_ERRORS[code];
-
-      if (mappedError) {
-        return res.status(mappedError.status).json({
-          success: false,
-          code,
-          message: mappedError.message,
-          thekaSaved: true,
-        });
-      }
-
-      console.error("Theka Registration Error:", error);
-
+    if (code === "THEKA_REGISTRATION_FEE_NOT_CONFIGURED") {
       return res.status(500).json({
         success: false,
-        message: "Unable to complete theka registration.",
-        thekaSaved: true,
+        code,
+        message: "The registration fee is not configured.",
       });
     }
+
+    console.error("Theka Registration Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to complete theka registration.",
+    });
   }
+}
+
 
   async getMyThekas(req: Request, res: Response) {
     try {

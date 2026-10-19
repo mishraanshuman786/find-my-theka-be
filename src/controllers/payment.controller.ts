@@ -2,8 +2,6 @@ import type { Request, Response } from "express";
 import { verifyPaymentSchema } from "../validators/payment.validation";
 import { paymentService } from "../services/payment.service";
 
-
-
 export class PaymentController {
   async verifyCheckoutPayment(req: Request, res: Response) {
     if (!req.user) {
@@ -60,6 +58,19 @@ export class PaymentController {
         PAYMENT_NOT_PAYABLE: {
           status: 409,
           message: "Payment cannot be completed in its current state",
+        },
+        INVALID_THEKA_REFERENCE: {
+          status: 400,
+          message: "Invalid Theka reference for this payment.",
+        },
+        THEKA_NOT_FOUND: {
+          status: 404,
+          message: "The associated Theka was not found.",
+        },
+        THEKA_VERIFICATION_UPDATE_FAILED: {
+          status: 500,
+          message:
+            "Payment was received, but registration status could not be updated.",
         },
       };
 
