@@ -205,6 +205,89 @@ async create(req: Request, res: Response) {
       });
     }
   }
+
+  // get nearby thekas
+  
+async getNearby(req: Request, res: Response) {
+  const getNumber = (
+    value: unknown,
+  ): number | undefined => {
+    if (typeof value !== "string" || value.trim() === "") {
+      return undefined;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const latitude = getNumber(req.query.lat);
+  const longitude = getNumber(req.query.lng);
+  const radius = getNumber(req.query.radius) ?? 5000;
+  const limit = getNumber(req.query.limit) ?? 20;
+
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Valid lat and lng query parameters are required.",
+    });
+  }
+
+  if (
+    !Number.isInteger(radius) ||
+    radius < 1 ||
+    radius > 50000
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Radius must be between 1 and 50000 metres.",
+    });
+  }
+
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Limit must be between 1 and 100.",
+    });
+  }
+
+  try {
+    const thekas = await thekaService.getNearbyThekas(
+      latitude,
+      longitude,
+      radius,
+      limit,
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: thekas.length,
+      data: thekas,
+    });
+  } catch (error) {
+    req.log?.error(
+      { err: error },
+      "Failed to fetch nearby verified thekas",
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch nearby thekas.",
+    });
+  }
+}
+
 }
 
 export const thekaController = new ThekaController();

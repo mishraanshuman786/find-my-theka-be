@@ -224,6 +224,21 @@ export class ThekaService {
       userId,
     );
   }
+
+  // get nearby thekas
+  async getNearbyThekas(
+  latitude: number,
+  longitude: number,
+  radiusMeters: number,
+  limit: number,
+) {
+  return this.thekaRepository.findNearbyVerified(
+    latitude,
+    longitude,
+    radiusMeters,
+    limit,
+  );
+}
 }
 
 export const thekaService = new ThekaService(thekaRepository);

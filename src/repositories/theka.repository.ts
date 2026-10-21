@@ -1,5 +1,5 @@
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "../db";
 import { thekas } from "../db/schema";
@@ -83,6 +83,66 @@ export class ThekaRepository {
       .returning();
 
     return theka;
+  }
+
+  // get the nearest verified thekas to the users location
+  async findNearbyVerified(latitude:number,longitude:number,radiusMeters:number, limit:number){
+    const distanceMeters = sql<number>`
+      (
+        6371000 * 2 * ASIN(
+          SQRT(
+            LEAST(1.0, GREATEST(0.0,
+              POWER(
+                SIN(
+                  RADIANS(
+                    (${thekas.latitude}::double precision - ${latitude}) / 2.0
+                  )
+                ),
+                2
+              )
+              +
+              COS(RADIANS(${latitude}))
+              * COS(${thekas.latitude}::double precision * PI() / 180.0)
+              * POWER(
+                SIN(
+                  RADIANS(
+                    (${thekas.longitude}::double precision - ${longitude}) / 2.0
+                  )
+                ),
+                2
+              )
+            ))
+          )
+        )
+      )
+    `;
+
+    const rows=await db.select({
+      id:thekas.id,
+      name:thekas.name,
+      address:thekas.address,
+      city:thekas.city,
+      state:thekas.state,
+      pincode: thekas.pincode,
+      latitude:thekas.latitude,
+      longitude: thekas.longitude,
+      distanceMeters
+    }).from(thekas).where(and(
+      eq(thekas.status,"VERIFIED"),
+       sql`${thekas.latitude} BETWEEN -90 AND 90`,
+       sql`${thekas.longitude} BETWEEN -180 AND 180`,
+       sql`${distanceMeters} <= ${radiusMeters}`,
+    )).orderBy(distanceMeters)
+      .limit(limit);
+
+      return rows.map((row:any) => ({
+      ...row,
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      distanceMeters: Math.round(Number(row.distanceMeters)),
+    }));
+
+
   }
 }
 
