@@ -9,7 +9,7 @@ const router = Router();
 
 // Every endpoint in this router requires an authenticated ADMIN.
 router.use(authMiddleware, authorizeRoles("ADMIN"));
- console.log("admin route");
+
 
 router.get("/dashboard/stats", adminController.getStats);
 

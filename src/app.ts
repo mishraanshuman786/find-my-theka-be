@@ -1,9 +1,12 @@
+
 import "dotenv/config";
 
 import dns from "dns";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+
+import logger from "./config/logger";
 import httpLogger from "./middleware/logger.middleware";
 
 import authRoutes from "./routes/auth.route";
@@ -26,18 +29,17 @@ app.use(cors());
 app.use(express.json());
 app.use(httpLogger);
 
-
 // Routes
 app.use(`${API_V1}/auth`, authRoutes);
 app.use(`${API_V1}/auth`, passwordResetRoutes);
 app.use(`${API_V1}/places`, placesRoutes);
-app.use(`${API_V1}/thekas`,thekaRoutes);
+app.use(`${API_V1}/thekas`, thekaRoutes);
 app.use(`${API_V1}/admin`, adminRoutes);
 app.use(`${API_V1}/payments`, paymentRoutes);
 app.use(`${API_V1}/gst`, gstValidationRoutes);
 
 // Root endpoint
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.json({
     name: "Find My Theka API",
     version: "1.0.0",
@@ -47,23 +49,20 @@ app.get("/", (req, res) => {
       auth_register: "POST /api/auth/register",
       auth_login: "POST /api/auth/login",
       profile: "GET /api/auth/profile",
-      nearby_places:
-        "GET /api/places/nearby?lat={lat}&lng={lng}",
+      nearby_places: "GET /api/places/nearby?lat={lat}&lng={lng}",
       search_places: "POST /api/places/search",
     },
   });
 });
 
-// Error handling
+// Global error handler — must remain after all routes
 app.use(
   (
     err: any,
     req: express.Request,
     res: express.Response,
-    next: express.NextFunction,
+    _next: express.NextFunction,
   ) => {
-    req.log?.error(err);
-
     const statusCode =
       typeof err.statusCode === "number"
         ? err.statusCode
@@ -72,11 +71,38 @@ app.use(
           : 500;
 
     const isOperational = err.isOperational === true;
+    const isServerError = statusCode >= 500;
 
     const message =
-      statusCode >= 500 && !isOperational
+      isServerError && !isOperational
         ? "Internal server error"
         : err.message || "Internal server error";
+
+    const requestLogger = req.log ?? logger;
+
+    // Avoid logging sensitive request bodies, credentials, or tokens.
+    if (isServerError) {
+      requestLogger.error(
+        {
+          err,
+          statusCode,
+          method: req.method,
+          url: req.originalUrl,
+        },
+        "Request failed",
+      );
+    } else {
+      requestLogger.warn(
+        {
+          statusCode,
+          method: req.method,
+          url: req.originalUrl,
+          errorCode: err.code,
+          message: err.message,
+        },
+        "Request rejected",
+      );
+    }
 
     return res.status(statusCode).json({
       success: false,
