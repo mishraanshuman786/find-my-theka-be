@@ -1,73 +1,66 @@
-import { Request, Response } from "express";
 
-import {
-  placesService,
-} from "../services/places.service";
+import type { Request, Response } from "express";
+import { placesService } from "../services/places.service";
+import { AppError } from "../utils/app-error";
 
 export class PlacesController {
- 
-
   async nearby(req: Request, res: Response) {
-    try {
-      const lat = Number(req.query.lat);
-      const lng = Number(req.query.lng);
-
-      const radius = Number(
-        req.query.radius || process.env.DEFAULT_RADIUS || 5000,
-      );
-
-      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid Latitude!",
-        });
+    const parseQueryNumber = (
+      value: unknown,
+    ): number | undefined => {
+      if (typeof value !== "string" || !value.trim()) {
+        return undefined;
       }
 
-      if (Number.isNaN(lng) || lng < -180 || lng > 180) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid Longitude!",
-        });
-      }
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
 
-      if (Number.isNaN(radius) || radius < 100 || radius > 50000) {
-        return res.status(400).json({
-          success: false,
-          message: "Radius must be between 100 and 50000 meters!",
-        });
-      }
+    const lat = parseQueryNumber(req.query.lat);
+    const lng = parseQueryNumber(req.query.lng);
 
-      const places =
-        await placesService.searchNearbyLiquorStores(
-          lat,
-          lng,
-          radius,
-        );
+    const radiusValue = req.query.radius;
+    const radius =
+      radiusValue === undefined
+        ? Number(process.env.DEFAULT_RADIUS || 5000)
+        : parseQueryNumber(radiusValue);
 
-      return res.status(200).json({
-        success: true,
-        message: `Found ${places.length} liquor shop(s) nearby`,
-        data: {
-          searchLocation: {
-            lat,
-            lng,
-          },
-          radius,
-          totalResults: places.length,
-          places,
-        },
-      });
-    } catch (error: any) {
-      console.error(
-        "Nearby places controller error:",
-        error.response?.data || error.message,
-      );
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch nearby liquor shops!",
-      });
+    if (lat === undefined || lat < -90 || lat > 90) {
+      throw new AppError("Invalid Latitude!", 400);
     }
+
+    if (lng === undefined || lng < -180 || lng > 180) {
+      throw new AppError("Invalid Longitude!", 400);
+    }
+
+    if (
+      radius === undefined ||
+      !Number.isFinite(radius) ||
+      radius < 100 ||
+      radius > 50000
+    ) {
+      throw new AppError(
+        "Radius must be between 100 and 50000 meters!",
+        400,
+      );
+    }
+
+    const places = await placesService.searchNearbyLiquorStores(
+      lat,
+      lng,
+      radius,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Found ${places.length} liquor shop(s) nearby`,
+      data: {
+        searchLocation: { lat, lng },
+        radius,
+        totalResults: places.length,
+        places,
+      },
+    });
   }
 }
 

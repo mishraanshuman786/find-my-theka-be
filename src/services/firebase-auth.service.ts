@@ -1,6 +1,7 @@
 import { getFirebaseAuth } from "../config/firebase";
 import { userRepository } from "../repositories/user.repository";
 import { generateToken, UserRole } from "../utils/jwt";
+import { AppError } from "../utils/app-error";
 
 interface LocalUser {
   id: number;
@@ -41,13 +42,13 @@ export class FirebaseAuthService {
     private readonly userRepo: UserRepository = userRepository
   ) {}
 
-  private async verifyFirebaseToken(idToken: string) {
-    try {
-      return await getFirebaseAuth().verifyIdToken(idToken);
-    } catch (error) {
-      throw new Error("Invalid Firebase ID token");
-    }
+private async verifyFirebaseToken(idToken: string) {
+  try {
+    return await getFirebaseAuth().verifyIdToken(idToken);
+  } catch {
+    throw new AppError("Invalid Firebase ID token", 401);
   }
+}
 
   async authenticate(idToken: string) {
     const decodedToken = await this.verifyFirebaseToken(idToken);
@@ -88,10 +89,11 @@ export class FirebaseAuthService {
        * Firebase users must have a verified email.
        */
       if (!verifiedEmail) {
-        throw new Error(
-          "Firebase account has no verified email"
-        );
-      }
+  throw new AppError(
+    "Firebase account has no verified email",
+    401,
+  );
+}
 
       /*
        * 3. Check whether a normal local email/password
@@ -112,11 +114,9 @@ export class FirebaseAuthService {
             decodedToken.uid
           );
 
-        if (!linkedUser) {
-          throw new Error(
-            "Failed to link Firebase account"
-          );
-        }
+       if (!linkedUser) {
+  throw new AppError("Failed to link Firebase account", 500);
+}
 
         user = linkedUser;
       } else {

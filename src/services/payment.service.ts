@@ -1,6 +1,6 @@
 import { razorpayService } from "./razorpay.service";
 import { paymentRepository } from "../repositories/payment.repository";
-
+import { AppError } from "../utils/app-error";
 import type {
   CreatePaymentOrderInput,
   VerifyPaymentInput,
@@ -9,15 +9,15 @@ import type {
 export class PaymentService {
  async createPaymentOrder(input: CreatePaymentOrderInput) {
   if (!Number.isSafeInteger(input.userId) || input.userId <= 0) {
-    throw new Error("INVALID_USER_ID");
+    throw new AppError("INVALID_USER_ID", 400);
   }
 
   if (!input.referenceId?.trim()) {
-    throw new Error("INVALID_REFERENCE_ID");
+    throw new AppError("INVALID_REFERENCE_ID", 400);
   }
 
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
-    throw new Error("INVALID_PAYMENT_AMOUNT");
+    throw new AppError("INVALID_PAYMENT_AMOUNT", 400);
   }
 
   const order = await razorpayService.createOrder({
@@ -33,7 +33,7 @@ export class PaymentService {
 
   // Persist the validated amount, not the SDK's wider number|string type.
   if (Number(order.amount) !== input.amount) {
-    throw new Error("RAZORPAY_ORDER_AMOUNT_MISMATCH");
+    throw new AppError("RAZORPAY_ORDER_AMOUNT_MISMATCH", 502);
   }
 
   try {
@@ -87,16 +87,16 @@ async verifyCheckoutPayment(
   const record = await paymentRepository.findByOrderId(input.orderId);
 
   if (!record) {
-    throw new Error("PAYMENT_NOT_FOUND");
+    throw new AppError("PAYMENT_NOT_FOUND", 404);
   }
 
   if (record.userId !== userId) {
-    throw new Error("PAYMENT_FORBIDDEN");
+    throw new AppError("PAYMENT_FORBIDDEN", 403);
   }
 
   if (record.status === "PAID") {
     if (record.razorpayPaymentId !== input.paymentId) {
-      throw new Error("PAYMENT_ALREADY_COMPLETED");
+      throw new AppError("PAYMENT_ALREADY_COMPLETED", 409);
     }
 
     // Repair the Theka status too if an earlier operation left it pending.
@@ -107,7 +107,7 @@ async verifyCheckoutPayment(
   }
 
   if (record.status !== "CREATED") {
-    throw new Error("PAYMENT_NOT_PAYABLE");
+    throw new AppError("PAYMENT_NOT_PAYABLE", 409);
   }
 
   const validSignature = razorpayService.verifyPaymentSignature(
@@ -117,7 +117,7 @@ async verifyCheckoutPayment(
   );
 
   if (!validSignature) {
-    throw new Error("INVALID_PAYMENT_SIGNATURE");
+    throw new AppError("INVALID_PAYMENT_SIGNATURE", 400);
   }
 
   const [payment, order] = await Promise.all([
@@ -133,7 +133,7 @@ async verifyCheckoutPayment(
     payment.currency !== record.currency ||
     order.currency !== record.currency
   ) {
-    throw new Error("PAYMENT_DETAILS_MISMATCH");
+    throw new AppError("PAYMENT_DETAILS_MISMATCH", 400);
   }
 
   if (payment.status !== "captured") {

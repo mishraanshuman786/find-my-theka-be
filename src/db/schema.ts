@@ -82,8 +82,12 @@ export const searchHistory = pgTable("search_history", {
 	radius: integer().default(5000),
 	resultsCount: integer("results_count").default(0),
 	searchedAt: timestamp("searched_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+    label: varchar("label",{length:100}),
+	recordType:varchar("record_type",{length:20}).notNull().default("SEARCH")
 }, (table) => [
 	index("idx_search_history_user").using("btree", table.userId.asc().nullsLast().op("int4_ops")),
+	index("idx_search_history_user_type").using("btree", table.userId.asc().nullsLast().op("int4_ops"),
+             table.recordType.asc()),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],

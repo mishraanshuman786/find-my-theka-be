@@ -1,91 +1,64 @@
-import { Request, Response } from "express";
 
+import type { Request, Response } from "express";
 import { passwordResetService } from "../services/password-reset.service";
+import { AppError } from "../utils/app-error";
 
 export class PasswordResetController {
-  // Post /auth/forgot-password
+  // POST /auth/forgot-password
   async forgotPassword(req: Request, res: Response) {
-    try {
-      const { email } = req.body;
+    const { email } = req.body;
 
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: "Email is required!",
-        });
-      }
-
-      await passwordResetService.forgotPassword(email);
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "If an account exists with this email, a password reset OTP has been sent.",
-      });
-    } catch (error) {
-      console.error("Forgot Password error:", error);
+    if (typeof email !== "string" || !email.trim()) {
+      throw new AppError("Email is required!", 400);
     }
 
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error!",
+    await passwordResetService.forgotPassword(email);
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "If an account exists with this email, a password reset OTP has been sent.",
     });
   }
 
-  // Post /auth/reset-password
+  // POST /auth/reset-password
   async resetPassword(req: Request, res: Response) {
-    try {
-      const { otp, email, newPassword } = req.body;
+    const { email, otp, newPassword } = req.body;
 
-      if (!email || !otp || !newPassword) {
-        return res.status(400).json({
-          success: false,
-          message: "Email, OTP and new password are required!",
-        });
-      }
-
-      //  Basic Password Validation
-      if (newPassword.length < 6) {
-        return res.status(400).json({
-          success: false,
-          message: "Password must be at least 6 characters!",
-        });
-      }
-
-      // OTP should be 6 digits
-      if (!/^\d{6}$/.test(otp)) {
-        return res.status(400).json({
-          success: false,
-          message: "OTP must be a 6-digit number!",
-        });
-      }
-
-      await passwordResetService.resetPassword(email, otp, newPassword);
-
-      return res.status(200).json({
-        success: true,
-        message: "Password reset successfully.",
-      });
-    } catch (error) {
-      console.error("Reset password error:", error);
-
-      if (error instanceof Error) {
-        if (
-          error.message === "Invalid OTP!" ||
-          error.message === "OTP Expired or Invalid!" ||
-          error.message === "Too Many OTP Attempts!"
-        ) {
-          return res.status(400).json({
-            success: false,
-            message: error.message,
-          });
-        }
-      }
+    if (
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof otp !== "string" ||
+      !otp ||
+      typeof newPassword !== "string" ||
+      !newPassword
+    ) {
+      throw new AppError(
+        "Email, OTP and new password are required!",
+        400,
+      );
     }
 
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error!",
+    if (newPassword.length < 6) {
+      throw new AppError(
+        "Password must be at least 6 characters!",
+        400,
+      );
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      throw new AppError("OTP must be a 6-digit number!", 400);
+    }
+
+    await passwordResetService.resetPassword(
+      email,
+      otp,
+      newPassword,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully.",
     });
   }
 }

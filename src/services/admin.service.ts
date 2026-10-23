@@ -4,6 +4,7 @@ import {
   AdminRepository,
   ThekaStatus,
 } from "../repositories/admin.repository";
+import { AppError } from "../utils/app-error";
 
 
 export class AdminService {
@@ -38,16 +39,18 @@ export class AdminService {
     // Distinguish a missing listing from one that cannot be approved.
     const existing = await this.repository.findThekaById(id);
 
-    if (!existing) {
-      throw new Error("THEKA_NOT_FOUND");
-    }
+   if (!existing) {
+  throw new AppError("THEKA_NOT_FOUND", 404);
+}
 
-    if (new Date(`${existing.licenseExpiryDate}T00:00:00.000Z`) <
-        new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z")) {
-      throw new Error("LICENSE_EXPIRED");
-    }
+    if (
+  new Date(`${existing.licenseExpiryDate}T00:00:00.000Z`) <
+  new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z")
+) {
+  throw new AppError("LICENSE_EXPIRED", 409);
+}
 
-    throw new Error("THEKA_NOT_PENDING");
+throw new AppError("THEKA_NOT_PENDING", 409);
   }
 
   async rejectTheka(id: number) {
@@ -60,10 +63,10 @@ export class AdminService {
     const existing = await this.repository.findThekaById(id);
 
     if (!existing) {
-      throw new Error("THEKA_NOT_FOUND");
+      throw new AppError("THEKA_NOT_FOUND",404);
     }
 
-    throw new Error("THEKA_NOT_PENDING");
+    throw new AppError("THEKA_NOT_PENDING", 409);
   }
 
   async deleteExpiredTheka(id: number) {
@@ -76,10 +79,10 @@ export class AdminService {
     const existing = await this.repository.findThekaById(id);
 
     if (!existing) {
-      throw new Error("THEKA_NOT_FOUND");
+      throw new AppError("THEKA_NOT_FOUND", 404);
     }
 
-    throw new Error("LICENSE_NOT_EXPIRED");
+    throw new AppError("LICENSE_NOT_EXPIRED", 409);
   }
 
   async getUsers(limit: number, offset: number) {

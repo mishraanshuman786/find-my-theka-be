@@ -1,46 +1,61 @@
 
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
+
 import { adminService } from "../services/admin.service";
 import type { ThekaStatus } from "../repositories/admin.repository";
+import { AppError } from "../utils/app-error";
 
-
-function parseId(value: string | string[] | undefined): number | null {
-  // Reject missing or multiple IDs
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  // Reject empty values and non-numeric IDs
-  if (!/^\d+$/.test(value)) {
-    return null;
+function parseId(value: string | string[] | undefined): number {
+  // Reject missing or multiple IDs.
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    throw new AppError("Invalid ID", 400);
   }
 
   const id = Number(value);
 
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new AppError("Invalid ID", 400);
+  }
+
+  return id;
 }
 
 function parsePagination(query: Request["query"]) {
   const rawLimit = query.limit;
   const rawPage = query.page;
 
-  const limitValue = rawLimit === undefined ? 20 : Number(rawLimit);
-  const pageValue = rawPage === undefined ? 1 : Number(rawPage);
+  // Reject repeated query parameters.
+  if (
+    (rawLimit !== undefined && typeof rawLimit !== "string") ||
+    (rawPage !== undefined && typeof rawPage !== "string")
+  ) {
+    throw new AppError(
+      "Invalid pagination. Use page >= 1 and limit between 1 and 100.",
+      400,
+    );
+  }
+
+  const limit = rawLimit === undefined ? 20 : Number(rawLimit);
+  const page = rawPage === undefined ? 1 : Number(rawPage);
 
   if (
-    !Number.isInteger(limitValue) ||
-    limitValue < 1 ||
-    limitValue > 100 ||
-    !Number.isInteger(pageValue) ||
-    pageValue < 1
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    !Number.isSafeInteger((page - 1) * limit)
   ) {
-    return null;
+    throw new AppError(
+      "Invalid pagination. Use page >= 1 and limit between 1 and 100.",
+      400,
+    );
   }
 
   return {
-    limit: limitValue,
-    page: pageValue,
-    offset: (pageValue - 1) * limitValue,
+    limit,
+    page,
+    offset: (page - 1) * limit,
   };
 }
 
@@ -54,336 +69,153 @@ const validStatuses: ThekaStatus[] = [
 
 export class AdminController {
   async getStats(_req: Request, res: Response) {
-    try {
-      const stats = await adminService.getStats();
+    const stats = await adminService.getStats();
 
-      return res.status(200).json({
-        success: true,
-        data: stats,
-      });
-    } catch (error) {
-      console.error("Admin dashboard stats error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch dashboard statistics",
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      data: stats,
+    });
   }
 
   async getThekas(req: Request, res: Response) {
-    try {
-      const pagination = parsePagination(req.query);
+    const pagination = parsePagination(req.query);
 
-      if (!pagination) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid pagination. Use page >= 1 and limit between 1 and 100.",
-        });
-      }
+    const statusValue = req.query.status;
+    let status: ThekaStatus | undefined;
 
-      const statusValue = req.query.status;
-      let status: ThekaStatus | undefined;
-
-      if (statusValue !== undefined) {
-        if (
-          typeof statusValue !== "string" ||
-          !validStatuses.includes(statusValue as ThekaStatus)
-        ) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid theka status",
-          });
-        }
-
-        status = statusValue as ThekaStatus;
-      }
-
-      const expiredValue = req.query.filter === "expired";
-
+    if (statusValue !== undefined) {
       if (
-        req.query.filter !== undefined &&
-        req.query.filter !== "expired"
+        typeof statusValue !== "string" ||
+        !validStatuses.includes(statusValue as ThekaStatus)
       ) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid filter. Supported filter: expired",
-        });
+        throw new AppError("Invalid theka status", 400);
       }
 
-      if (expiredValue && status) {
-        return res.status(400).json({
-          success: false,
-          message: "Use either status or filter=expired, not both",
-        });
-      }
-
-      const result = await adminService.getThekas({
-        ...pagination,
-        status,
-        expired: expiredValue,
-      });
-
-      return res.status(200).json({
-        success: true,
-        data: result.items,
-        pagination: {
-          page: pagination.page,
-          limit: result.limit,
-          total: result.total,
-          totalPages: Math.ceil(result.total / result.limit),
-        },
-      });
-    } catch (error) {
-      console.error("Admin list thekas error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch thekas",
-      });
+      status = statusValue as ThekaStatus;
     }
+
+    const filterValue = req.query.filter;
+
+    if (
+      filterValue !== undefined &&
+      (typeof filterValue !== "string" || filterValue !== "expired")
+    ) {
+      throw new AppError(
+        "Invalid filter. Supported filter: expired",
+        400,
+      );
+    }
+
+    const expired = filterValue === "expired";
+
+    if (expired && status) {
+      throw new AppError(
+        "Use either status or filter=expired, not both",
+        400,
+      );
+    }
+
+    const result = await adminService.getThekas({
+      ...pagination,
+      status,
+      expired,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result.items,
+      pagination: {
+        page: pagination.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    });
   }
 
   async getThekaById(req: Request, res: Response) {
-    try {
-      const id = parseId(req.params.id);
+    const id = parseId(req.params.id);
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid theka ID",
-        });
-      }
+    const theka = await adminService.getThekaById(id);
 
-      const theka = await adminService.getThekaById(id);
-
-      if (!theka) {
-        return res.status(404).json({
-          success: false,
-          message: "Theka not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: theka,
-      });
-    } catch (error) {
-      console.error("Admin get theka error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch theka",
-      });
+    if (!theka) {
+      throw new AppError("THEKA_NOT_FOUND", 404);
     }
+
+    return res.status(200).json({
+      success: true,
+      data: theka,
+    });
   }
 
   async approveTheka(req: Request, res: Response) {
-    try {
-      const id = parseId(req.params.id);
+    const id = parseId(req.params.id);
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid theka ID",
-        });
-      }
+    const theka = await adminService.approveTheka(id);
 
-      const theka = await adminService.approveTheka(id);
-
-      return res.status(200).json({
-        success: true,
-        message: "Theka approved successfully",
-        data: theka,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "THEKA_NOT_FOUND") {
-          return res.status(404).json({
-            success: false,
-            message: "Theka not found",
-          });
-        }
-
-        if (error.message === "LICENSE_EXPIRED") {
-          return res.status(409).json({
-            success: false,
-            message: "Cannot approve a theka with an expired license",
-          });
-        }
-
-        if (error.message === "THEKA_NOT_PENDING") {
-          return res.status(409).json({
-            success: false,
-            message: "Only pending thekas can be approved",
-          });
-        }
-      }
-
-      console.error("Admin approve theka error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to approve theka",
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Theka approved successfully",
+      data: theka,
+    });
   }
 
   async rejectTheka(req: Request, res: Response) {
-    try {
-      const id = parseId(req.params.id);
+    const id = parseId(req.params.id);
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid theka ID",
-        });
-      }
+    const theka = await adminService.rejectTheka(id);
 
-      const theka = await adminService.rejectTheka(id);
-
-      return res.status(200).json({
-        success: true,
-        message: "Theka rejected successfully",
-        data: theka,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "THEKA_NOT_FOUND") {
-          return res.status(404).json({
-            success: false,
-            message: "Theka not found",
-          });
-        }
-
-        if (error.message === "THEKA_NOT_PENDING") {
-          return res.status(409).json({
-            success: false,
-            message: "Only pending thekas can be rejected",
-          });
-        }
-      }
-
-      console.error("Admin reject theka error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to reject theka",
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Theka rejected successfully",
+      data: theka,
+    });
   }
 
   async deleteExpiredTheka(req: Request, res: Response) {
-    try {
-      const id = parseId(req.params.id);
+    const id = parseId(req.params.id);
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid theka ID",
-        });
-      }
+    await adminService.deleteExpiredTheka(id);
 
-      await adminService.deleteExpiredTheka(id);
-
-      return res.status(200).json({
-        success: true,
-        message: "Expired theka listing deleted successfully",
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "THEKA_NOT_FOUND") {
-          return res.status(404).json({
-            success: false,
-            message: "Theka not found",
-          });
-        }
-
-        if (error.message === "LICENSE_NOT_EXPIRED") {
-          return res.status(409).json({
-            success: false,
-            message: "This listing cannot be deleted because its license has not expired",
-          });
-        }
-      }
-
-      console.error("Admin delete theka error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to delete expired listing",
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Expired theka listing deleted successfully",
+    });
   }
 
   async getUsers(req: Request, res: Response) {
-    try {
-      const pagination = parsePagination(req.query);
+    const pagination = parsePagination(req.query);
 
-      if (!pagination) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid pagination",
-        });
-      }
+    const result = await adminService.getUsers(
+      pagination.limit,
+      pagination.offset,
+    );
 
-      const result = await adminService.getUsers(
-        pagination.limit,
-        pagination.offset,
-      );
-
-      return res.status(200).json({
-        success: true,
-        data: result.items,
-        pagination: {
-          page: pagination.page,
-          limit: result.limit,
-          total: result.total,
-          totalPages: Math.ceil(result.total / result.limit),
-        },
-      });
-    } catch (error) {
-      console.error("Admin list users error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch users",
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      data: result.items,
+      pagination: {
+        page: pagination.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    });
   }
 
   async getUserById(req: Request, res: Response) {
-    try {
-      const id = parseId(req.params.id);
+    const id = parseId(req.params.id);
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid user ID",
-        });
-      }
+    const user = await adminService.getUserById(id);
 
-      const user = await adminService.getUserById(id);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: user,
-      });
-    } catch (error) {
-      console.error("Admin get user error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch user",
-      });
+    if (!user) {
+      throw new AppError("USER_NOT_FOUND", 404);
     }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
   }
 }
 

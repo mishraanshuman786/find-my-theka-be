@@ -157,8 +157,6 @@ class NearbyThekaService {
         ? customResult.value
         : [];
 
-    const googleResponse =
-      googleResult.status === "fulfilled" ? googleResult.value : [];
 
     // Supports either an array or a { data: [...] } response.
     const googlePlaces: PlaceResponse[] =

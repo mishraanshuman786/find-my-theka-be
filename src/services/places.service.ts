@@ -1,4 +1,5 @@
 import axios from "axios";
+import { AppError } from "../utils/app-error";
 import {
   GooglePlacesResponse,
   GooglePlace,
@@ -16,9 +17,9 @@ export class PlacesService {
   ): Promise<PlaceResponse[]> {
     const apiKey = process.env.GOOGLE_DEMO_KEY;
 
-    if (!apiKey) {
-      throw new Error("GOOGLE_DEMO_KEY is not configured!");
-    }
+   if (!apiKey) {
+  throw new AppError("GOOGLE_DEMO_KEY is not configured!", 500);
+}
 
     try {
       const response = await axios.post<GooglePlacesResponse>(
@@ -81,7 +82,7 @@ export class PlacesService {
         error.response?.data || error.message,
       );
 
-      throw error;
+        throw new AppError("Google Places provider unavailable", 502);
     }
   }
 

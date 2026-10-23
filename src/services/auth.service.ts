@@ -1,5 +1,5 @@
 import brcypt from "bcryptjs";
-
+import { AppError } from "../utils/app-error";
 import { userRepository } from "../repositories/user.repository";
 
 import { generateToken } from "../utils/jwt";
@@ -24,7 +24,7 @@ export class AuthService {
     const existingUser = await userRepository.findByEmail(email);
 
     if (existingUser) {
-      throw new Error("User already Exists!");
+       throw new AppError("User already exists!", 409);
     }
 
     // Hash Password
@@ -57,14 +57,14 @@ export class AuthService {
     const user = await userRepository.findByEmail(email);
 
     if (!user) {
-      throw new Error("Invalid Email or Password!");
+       throw new AppError("Invalid email or password!", 401);
     }
 
     // verify password
     const passwordValid = await brcypt.compare(data.password, user.password);
 
     if (!passwordValid) {
-      throw new Error("Invalid Email or Password!");
+        throw new AppError("Invalid email or password!", 401);
     }
 
     // Generate JWT Token
@@ -93,7 +93,7 @@ export class AuthService {
     const user=await userRepository.findById(userId);
 
     if(!user){
-        throw new Error("User Not Found!");
+       throw new AppError("User not found!", 404);
     }
 
     return {

@@ -3,7 +3,7 @@ import {
   thekaRepository,
   ThekaRepository,
 } from "../repositories/theka.repository";
-
+import { AppError } from "../utils/app-error";
 import { CreateThekaInput } from "../validators/theka.validation";
 import { paymentService } from "./payment.service";
 import { gstVerificationService } from "./gst-verification.service";
@@ -125,7 +125,7 @@ export class ThekaService {
 
     if (theka) {
       if (!this.matchesRegistration(theka, userId, data)) {
-        throw new Error("IDEMPOTENCY_KEY_REUSED");
+       throw new AppError("IDEMPOTENCY_KEY_REUSED", 409);
       }
     } else {
       const verified = await gstVerificationService.isVerified(
@@ -146,7 +146,7 @@ export class ThekaService {
       );
 
       if (!Number.isSafeInteger(amount) || amount <= 0) {
-        throw new Error("THEKA_REGISTRATION_FEE_NOT_CONFIGURED");
+        throw new AppError("THEKA_REGISTRATION_FEE_NOT_CONFIGURED", 500);
       }
 
       try {
@@ -179,7 +179,7 @@ export class ThekaService {
         theka = existing;
 
         if (!this.matchesRegistration(theka, userId, data)) {
-          throw new Error("IDEMPOTENCY_KEY_REUSED");
+         throw new AppError("IDEMPOTENCY_KEY_REUSED", 409);
         }
       }
     }
@@ -189,7 +189,7 @@ export class ThekaService {
     );
 
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      throw new Error("THEKA_REGISTRATION_FEE_NOT_CONFIGURED");
+     throw new AppError("THEKA_REGISTRATION_FEE_NOT_CONFIGURED", 500);
     }
 
     try {

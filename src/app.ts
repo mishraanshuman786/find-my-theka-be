@@ -60,19 +60,32 @@ app.use(
     err: any,
     req: express.Request,
     res: express.Response,
-    next: express.NextFunction
+    next: express.NextFunction,
   ) => {
-   
     req.log?.error(err);
 
-    return res.status(err.status || 500).json({
+    const statusCode =
+      typeof err.statusCode === "number"
+        ? err.statusCode
+        : typeof err.status === "number"
+          ? err.status
+          : 500;
+
+    const isOperational = err.isOperational === true;
+
+    const message =
+      statusCode >= 500 && !isOperational
+        ? "Internal server error"
+        : err.message || "Internal server error";
+
+    return res.status(statusCode).json({
       success: false,
-      message: err.message || "Internal server error",
+      message,
       ...(process.env.NODE_ENV === "development" && {
         stack: err.stack,
       }),
     });
-  }
+  },
 );
 
 export default app;

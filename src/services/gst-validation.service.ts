@@ -1,4 +1,4 @@
-
+import { AppError } from "../utils/app-error";
 import type {
   GstinCheckResponse,
   GstBalanceResponse,
@@ -13,8 +13,8 @@ export class GstValidationService {
     const apiKey = process.env.GSTIN_CHECK_API_KEY;
 
     if (!apiKey) {
-      throw new Error("GST_PROVIDER_NOT_CONFIGURED");
-    }
+  throw new AppError("GST_PROVIDER_NOT_CONFIGURED", 500);
+}
 
     const baseUrl = (
       process.env.GSTIN_CHECK_BASE_URL ??
@@ -26,8 +26,8 @@ export class GstValidationService {
     );
 
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000) {
-      throw new Error("GST_PROVIDER_CONFIGURATION_INVALID");
-    }
+  throw new AppError("GST_PROVIDER_CONFIGURATION_INVALID", 500);
+}
 
     return { apiKey, baseUrl, timeoutMs };
   }
@@ -42,29 +42,28 @@ export class GstValidationService {
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
-      throw new Error("GST_PROVIDER_UNAVAILABLE");
+     throw new AppError("GST_PROVIDER_UNAVAILABLE", 503);
     }
 
-    if (response.status === 401 || response.status === 403) {
-      throw new Error("GST_PROVIDER_AUTH_FAILED");
-    }
+   if (response.status === 401 || response.status === 403) {
+  throw new AppError("GST_PROVIDER_AUTH_FAILED", 502);
+}
 
-    if (response.status === 429) {
-      throw new Error("GST_PROVIDER_RATE_LIMITED");
-    }
+  if (response.status === 429) {
+  throw new AppError("GST_PROVIDER_RATE_LIMITED", 503);
+}
+   if (response.status >= 500) {
+  throw new AppError("GST_PROVIDER_UNAVAILABLE", 503);
+}
 
-    if (response.status >= 500) {
-      throw new Error("GST_PROVIDER_UNAVAILABLE");
-    }
-
-    if (!response.ok) {
-      throw new Error("GST_PROVIDER_REQUEST_FAILED");
-    }
+ if (!response.ok) {
+  throw new AppError("GST_PROVIDER_REQUEST_FAILED", 502);
+}
 
     try {
       return (await response.json()) as T;
     } catch {
-      throw new Error("GST_PROVIDER_INVALID_RESPONSE");
+      throw new AppError("GST_PROVIDER_INVALID_RESPONSE",502);
     }
   }
 
@@ -85,7 +84,7 @@ export class GstValidationService {
       !Number.isFinite(result.data) ||
       result.data < 0
     ) {
-      throw new Error("GST_BALANCE_UNAVAILABLE");
+      throw new AppError("GST_BALANCE_UNAVAILABLE", 502);
     }
 
     return result.data;
@@ -99,7 +98,7 @@ export class GstValidationService {
 
     // Step 1: validate format before making any API calls.
     if (!GSTIN_REGEX.test(gstin)) {
-      throw new Error("INVALID_GSTIN_FORMAT");
+      throw new AppError("INVALID_GSTIN_FORMAT", 400);
     }
 
     const { apiKey, baseUrl, timeoutMs } = this.getConfig();
@@ -108,7 +107,7 @@ export class GstValidationService {
     const creditsRemaining = await this.getCreditBalance();
 
     if (creditsRemaining < 1) {
-      throw new Error("GST_CREDITS_INSUFFICIENT");
+      throw new AppError("GST_CREDITS_INSUFFICIENT", 503);
     }
 
     // Step 3: validate the GSTIN.
@@ -134,7 +133,7 @@ export class GstValidationService {
     }
 
     if (result.flag !== true || !result.data) {
-      throw new Error("GST_PROVIDER_INVALID_RESPONSE");
+      throw new AppError("GST_PROVIDER_INVALID_RESPONSE", 502);
     }
 
     const data = result.data;
@@ -144,11 +143,11 @@ export class GstValidationService {
       typeof data.gstin !== "string" ||
       data.gstin.trim().toUpperCase() !== gstin
     ) {
-      throw new Error("GST_PROVIDER_GSTIN_MISMATCH");
+      throw new AppError("GST_PROVIDER_GSTIN_MISMATCH", 502);
     }
 
     if (typeof data.sts !== "string" || !data.sts.trim()) {
-      throw new Error("GST_PROVIDER_INVALID_RESPONSE");
+      throw new AppError("GST_PROVIDER_INVALID_RESPONSE", 502);
     }
 
     const registrationStatus = data.sts.trim();

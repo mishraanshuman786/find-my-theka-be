@@ -1,185 +1,121 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 import { authService } from "../services/auth.service";
 import { firebaseAuthService } from "../services/firebase-auth.service";
+import { AppError } from "../utils/app-error";
 
 export class AuthController {
   async register(req: Request, res: Response) {
-    try {
-      const { name, email, password, phone } = req.body;
+    const { name, email, password, phone } = req.body;
 
-      if (!name || !email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Name, email and password are Required!",
-        });
-      }
-
-      const result = await authService.register({
-        name,
-        email,
-        password,
-        phone,
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: "User Registered Successfully.",
-        data: {
-          user: {
-            id: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-            phone: result.user.phone,
-            role: result.user.role
-          },
-          token: result.token,
-        },
-      });
-    } catch (error) {
-      console.error("Register Error: ", error);
-
-      if (error instanceof Error && error.message === "User already Exists!") {
-        return res.status(409).json({
-          success: false,
-          message: "User already Exists!",
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof password !== "string" ||
+      !password
+    ) {
+      throw new AppError(
+        "Name, email and password are required!",
+        400,
+      );
     }
+
+    const result = await authService.register({
+      name,
+      email,
+      password,
+      phone,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully.",
+      data: {
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          phone: result.user.phone,
+          role: result.user.role,
+        },
+        token: result.token,
+      },
+    });
   }
 
   async login(req: Request, res: Response) {
-    try {
-      const { email, password } = req.body;
+    const { email, password } = req.body;
 
-      if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Email and password are required!",
-        });
-      }
+    if (
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof password !== "string" ||
+      !password
+    ) {
+      throw new AppError("Email and password are required!", 400);
+    }
 
-      const result = await authService.login({
-        email,
-        password,
-      });
+    const result = await authService.login({
+      email,
+      password,
+    });
 
-      return res.status(200).json({
-        success: true,
-        message: "Login Successfull",
-        data: {
-          user: {
-            id: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-            phone: result.user.phone,
-            role: result.user.role
-          },
-          token: result.token,
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          phone: result.user.phone,
+          role: result.user.role,
         },
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-
-      if (
-        error instanceof Error &&
-        error.message === "Invalid Email or Password!"
-      ) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid Email or Password!",
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        message: "Internal Server Error!",
-      });
-    }
+        token: result.token,
+      },
+    });
   }
 
-  // login using firebase with email or phone
+  // Login using Firebase with email or phone.
   async firebaseLogin(req: Request, res: Response) {
-    try {
-      const { idToken } = req.body;
-      if (!idToken) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Firebase ID token is required" });
-      }
-      const result = await firebaseAuthService.authenticate(idToken);
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "Firebase authentication successful",
-          data: {
-            user: {
-              id: result.user.id,
-              name: result.user.name,
-              email: result.user.email,
-              phone: result.user.phone,
-              role: result.user.role
-            },
-            token: result.token,
-          },
-        });
-    } catch (error) {
-      console.error("Firebase authentication error:", error);
-      if (
-        error instanceof Error &&
-        error.message ===
-          "Firebase email and phone belong to different accounts"
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message: "Firebase email and phone belong to different accounts",
-          });
-      }
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid Firebase authentication" });
+    const { idToken } = req.body;
+
+    if (typeof idToken !== "string" || !idToken.trim()) {
+      throw new AppError("Firebase ID token is required", 400);
     }
+
+    const result = await firebaseAuthService.authenticate(idToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Firebase authentication successful",
+      data: {
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          phone: result.user.phone,
+          role: result.user.role,
+        },
+        token: result.token,
+      },
+    });
   }
 
-  //   get Profile
+  // Get current user's profile.
   async profile(req: Request, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized!",
-        });
-      }
-
-      const user = await authService.getCurrentProfile(req.user.userId);
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: user,
-      });
-    } catch (error) {
-      console.error("Profile error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch profile",
-      });
+    if (!req.user) {
+      throw new AppError("Unauthorized!", 401);
     }
+
+    const user = await authService.getCurrentProfile(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
   }
 }
 
