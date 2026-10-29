@@ -11,12 +11,17 @@ export const renameSavedLocationSchema=z.object({
     label: z.string().trim().min(1,"Label cannot be empty!").max(100,"Label cannot exceed 100 characters!")
 });
 
-export const savedLocationIdSchema=z.object({
-    id: z.string().regex(/^[1-9]\d*$/, "Invalid saved location ID").refine(
+
+export const savedLocationIdSchema = z.object({
+  id: z
+    .string()
+    .regex(/^[1-9]\d*$/, "Invalid saved location ID")
+    .refine(
       (value) => Number.isSafeInteger(Number(value)),
       "Invalid saved location ID",
-    )
+    ),
 });
+
 
 
 export type SaveLocationInput=z.infer<typeof saveLocationSchema>;

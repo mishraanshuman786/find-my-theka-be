@@ -1,3 +1,4 @@
+
 import type { Request, Response } from "express";
 
 import { searchHistoryService } from "../services/search-history.service";
@@ -11,7 +12,7 @@ import {
 
 export class SearchHistoryController {
   async saveLocation(req: Request, res: Response) {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
 
     const validation = saveLocationSchema.safeParse(req.body);
 
@@ -32,9 +33,10 @@ export class SearchHistoryController {
   }
 
   async getSavedLocations(req: Request, res: Response) {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
 
-    const locations = await searchHistoryService.getSavedLocations(userId);
+    const locations =
+      await searchHistoryService.getSavedLocations(userId);
 
     return res.status(200).json({
       success: true,
@@ -44,7 +46,7 @@ export class SearchHistoryController {
   }
 
   async renameSavedLocation(req: Request, res: Response) {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
 
     const idValidation = savedLocationIdSchema.safeParse(req.params);
 
@@ -52,17 +54,19 @@ export class SearchHistoryController {
       throw new AppError("Invalid parameters!", 400);
     }
 
-    const bodyValidation = renameSavedLocationSchema.safeParse(req.body);
+    const bodyValidation =
+      renameSavedLocationSchema.safeParse(req.body);
 
     if (!bodyValidation.success) {
       throw new AppError("Validation failed!", 400);
     }
 
-    const location = await searchHistoryService.renameSavedLocation(
-      userId,
-      idValidation.data.id,
-      bodyValidation.data,
-    );
+    const location =
+      await searchHistoryService.renameSavedLocation(
+        userId,
+        idValidation.data.id,
+        bodyValidation.data,
+      );
 
     return res.status(200).json({
       success: true,
@@ -72,7 +76,7 @@ export class SearchHistoryController {
   }
 
   async deleteSavedLocation(req: Request, res: Response) {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
 
     const validation = savedLocationIdSchema.safeParse(req.params);
 
@@ -92,4 +96,5 @@ export class SearchHistoryController {
   }
 }
 
-export const searchHistoryController = new SearchHistoryController();
+export const searchHistoryController =
+  new SearchHistoryController();
