@@ -2,15 +2,24 @@
 import type { Request, Response } from "express";
 import { passwordResetService } from "../services/password-reset.service";
 import { AppError } from "../utils/app-error";
+import {
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../validators/password-reset.validation";
 
 export class PasswordResetController {
   // POST /auth/forgot-password
   async forgotPassword(req: Request, res: Response) {
-    const { email } = req.body;
+    const validation = forgotPasswordSchema.safeParse(req.body);
 
-    if (typeof email !== "string" || !email.trim()) {
-      throw new AppError("Email is required!", 400);
+    if (!validation.success) {
+      throw new AppError(
+        validation.error.issues[0]?.message || "Invalid request data",
+        400,
+      );
     }
+
+    const { email } = validation.data;
 
     await passwordResetService.forgotPassword(email);
 
@@ -23,38 +32,18 @@ export class PasswordResetController {
 
   // POST /auth/reset-password
   async resetPassword(req: Request, res: Response) {
-    const { email, otp, newPassword } = req.body;
+    const validation = resetPasswordSchema.safeParse(req.body);
 
-    if (
-      typeof email !== "string" ||
-      !email.trim() ||
-      typeof otp !== "string" ||
-      !otp ||
-      typeof newPassword !== "string" ||
-      !newPassword
-    ) {
+    if (!validation.success) {
       throw new AppError(
-        "Email, OTP and new password are required!",
+        validation.error.issues[0]?.message || "Invalid request data",
         400,
       );
     }
 
-    if (newPassword.length < 6) {
-      throw new AppError(
-        "Password must be at least 6 characters!",
-        400,
-      );
-    }
+    const { email, otp, newPassword } = validation.data;
 
-    if (!/^\d{6}$/.test(otp)) {
-      throw new AppError("OTP must be a 6-digit number!", 400);
-    }
-
-    await passwordResetService.resetPassword(
-      email,
-      otp,
-      newPassword,
-    );
+    await passwordResetService.resetPassword(email, otp, newPassword);
 
     return res.status(200).json({
       success: true,

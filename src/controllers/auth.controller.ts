@@ -3,6 +3,11 @@ import type { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { firebaseAuthService } from "../services/firebase-auth.service";
 import { AppError } from "../utils/app-error";
+import {
+  updateProfileSchema,
+  setPasswordSchema,
+  changePasswordSchema,
+} from "../validators/auth.validation";
 
 export class AuthController {
   async register(req: Request, res: Response) {
@@ -16,10 +21,7 @@ export class AuthController {
       typeof password !== "string" ||
       !password
     ) {
-      throw new AppError(
-        "Name, email and password are required!",
-        400,
-      );
+      throw new AppError("Name, email and password are required!", 400);
     }
 
     const result = await authService.register({
@@ -115,6 +117,92 @@ export class AuthController {
     return res.status(200).json({
       success: true,
       data: user,
+    });
+  }
+
+  // Update current user's profile
+  async updateProfile(req: Request, res: Response) {
+    if (!req.user) {
+      throw new AppError("Unauthorized!", 401);
+    }
+
+    // Validate request body
+    const validationResult = updateProfileSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      throw new AppError(
+        validationResult.error.issues[0]?.message || "Invalid profile data!",
+        400,
+      );
+    }
+
+    const updatedUser = await authService.updateProfile(
+      req.user.userId,
+      validationResult.data,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully!",
+      data: updatedUser,
+    });
+  }
+
+  // Set password for the current authenticated user
+  async setPassword(req: Request, res: Response) {
+    if (!req.user) {
+      throw new AppError("Unauthorized!", 401);
+    }
+
+    const validationResult = setPasswordSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      throw new AppError(
+        validationResult.error.issues[0]?.message || "Invalid password!",
+        400,
+      );
+    }
+
+    const user = await authService.setPassword(
+      req.user.userId,
+      validationResult.data.newPassword,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password set successfully. You can now log in using your email and password.",
+      data: {
+        id: user.id,
+        email: user.email,
+        hasPassword: true,
+      },
+    });
+  }
+
+  async changePassword(req: Request, res: Response) {
+    if (!req.user) {
+      throw new AppError("Unauthorized!", 401);
+    }
+
+    const validation = changePasswordSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      throw new AppError(
+        validation.error.issues[0]?.message || "Invalid request data",
+        400,
+      );
+    }
+
+    const { currentPassword, newPassword } = validation.data;
+
+    const userId = req.user.userId;
+
+    await authService.changePassword(userId, currentPassword, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully!",
     });
   }
 }

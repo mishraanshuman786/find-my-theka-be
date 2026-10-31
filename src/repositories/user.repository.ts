@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and , isNull } from "drizzle-orm";
 import { db } from "../db";
 import { users } from "../db/schema";
 
@@ -81,8 +81,10 @@ export class UserRepository {
         id: users.id,
         name: users.name,
         email: users.email,
+        password: users.password,
         phone: users.phone,
         role: users.role,
+        firebaseUid: users.firebaseUid,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -91,6 +93,80 @@ export class UserRepository {
 
     return user;
   }
+
+  
+  // Find user by phone number
+  async findByPhone(phone: string) {
+    const [user] = await db
+      .select({
+        id: users.id,
+        phone: users.phone,
+      })
+      .from(users)
+      .where(eq(users.phone, phone))
+      .limit(1);
+
+    return user;
+  }
+
+  // Update user's profile
+  async updateProfile(
+    userId: number,
+    data: {
+      name?: string;
+      phone?: string | null;
+    },
+  ) {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...data,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId))
+      .returning({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        role: users.role,
+        createdAt: users.createdAt,
+      });
+
+    return user;
+  }
+
+  
+  // Set password only when the user does not already have one
+  async setPasswordIfNotExists(
+    userId: number,
+    hashedPassword: string,
+  ) {
+    const [user] = await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(users.id, userId),
+          isNull(users.password),
+        ),
+      )
+      .returning({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        role: users.role,
+        createdAt: users.createdAt,
+      });
+
+    return user;
+  }
+
+
 
   // update the password of existing user
   async updatePassword(userId: number, hashedPassword: string) {
@@ -127,6 +203,32 @@ export class UserRepository {
 
     return user;
   }
+
+  async updatePasswordIfCurrent(
+  userId: number,
+  currentPasswordHash: string,
+  newPasswordHash: string,
+) {
+  const [user] = await db
+    .update(users)
+    .set({
+      password: newPasswordHash,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(users.id, userId),
+        eq(users.password, currentPasswordHash),
+      ),
+    )
+    .returning({
+      id: users.id,
+      email: users.email,
+      updatedAt: users.updatedAt,
+    });
+
+  return user;
+}
 }
 
 export const userRepository = new UserRepository();

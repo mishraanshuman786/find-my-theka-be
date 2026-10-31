@@ -12,5 +12,11 @@ router.post("/firebase", authController.firebaseLogin);
 
 router.get("/profile",authMiddleware, authController.profile);
 
+router.patch("/profile", authMiddleware, authController.updateProfile);
+
+router.post("/set-password",authMiddleware,authController.setPassword);
+
+router.post("/change-password",authMiddleware,authController.changePassword);
+
 export default router;
 
